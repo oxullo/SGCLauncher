@@ -35,7 +35,7 @@ import time
 import logging
 import serial
 
-import SendKeys
+import ConfigParser
 
 import ctypes
 import win32api
@@ -81,9 +81,9 @@ class GameLauncher(threading.Thread):
     def run(self):
         try:
             self.popen = subprocess.Popen(
-                    os.path.join(self.game.path, self.game.exe),
+                    os.path.join(self.game['path'], self.game['exe']),
                     bufsize= -1,
-                    cwd=self.game.path,
+                    cwd=self.game['path'],
                     shell=False,
                     stderr=subprocess.PIPE,
                     stdin=subprocess.PIPE,
@@ -92,7 +92,7 @@ class GameLauncher(threading.Thread):
                     close_fds=False)
         except Exception, e:
             self.state = self.STATE_ERROR
-            logging.error('Cannot start game %s: %s' % (self.game, e))
+            logging.error('Cannot start game %s: %s' % (self.game['shortname'], e))
             return
 
         self.popen.stdin.close()
@@ -103,7 +103,7 @@ class GameLauncher(threading.Thread):
             try:
                 ln = self.popen.stderr.readline().strip()
             except Exception, e:
-                logging.info('Game launcher %s ended' % self.game)
+                logging.info('Game launcher %s ended' % self.game['shortname'])
                 break
             else:
                 if ln:
@@ -172,41 +172,85 @@ class U0KeyTranslator(object):
         logging.debug('Sent key 0x%x, eventf=%d' % (vkey, eventf))
 
 
-class T(libavg.AVGApp):
+class MyConfigParser(ConfigParser.ConfigParser):
+    def getDefaulted(self, section, option, default):
+        if self.has_option(section, option):
+            return self.get(section, option)
+        else:
+            return default
+
+
+class GamesRegistry(object):
+    GAMES_SUBDIR = 'games'
+
+    def __init__(self, gamesConfig='games.ini'):
+        config = MyConfigParser()
+        config.read(gamesConfig)
+
+        basePath = os.path.join(os.path.dirname(os.path.abspath(__file__)),
+                self.GAMES_SUBDIR)
+
+        self.__games = []
+        for section in config.sections():
+            if config.getboolean(section, 'active'):
+                game = dict()
+
+                game['shortname'] = section
+                game['path'] = os.path.join(basePath, config.get(section, 'path'))
+                game['exe'] = config.get(section, 'exe')
+                game['name'] = config.getDefaulted(section, 'name', None)
+                game['author'] = config.getDefaulted(section, 'author', None)
+                game['description'] = config.getDefaulted(section, 'description', None)
+
+                logging.debug('Configuring game %s' % section)
+                self.__games.append(game)
+
+        self.__gamePtr = 0
+
+    def getNextGame(self):
+        self.__gamePtr += 1
+
+        if self.__gamePtr == len(self.__games):
+            self.__gamePtr = 0
+
+        return self.__games[self.__gamePtr]
+
+    def getPrevGame(self):
+        self.__gamePtr -= 1
+
+        if self.__gamePtr == -1:
+            self.__gamePtr = len(self.__games) - 1
+
+        return self.__games[self.__gamePtr]
+
+
+class LauncherApp(libavg.AVGApp):
     def init(self):
         self.logLines = []
         self.log = libavg.avg.WordsNode(pos=(100, 100), parent=self._parentNode)
         self.addLogLine('Idling')
         self.propagateKeys = False
 
-        self.games = [
-#                Game('Biodiversity',
-#                        r'C:\devel\workspace\pythons\Biodiversity',
-#                        'Biodiversity.exe'),
-                Game('U0 Tester',
-                        r'C:\devel\workspace\pythons\U0Tester\vc10\Release',
-                        'U0Tester.exe'),
-#                Game('Dancing Dancing Dancing',
-#                        r'C:\devel\workspace\pythons\dancing',
-#                        'DANCING-DANCING-DANCING-DANCING-DANCING v1.exe'),
-                ]
-        self.currentGame = 0
+        self.gamesRegistry = GamesRegistry()
+
         self.proc = None
 
         self.propagateKeys = False
         self.u0Interface = U0Interface('COM3', self.__onU0StateChanged)
         self.u0KeyTranslator = U0KeyTranslator()
 
+        self.__saveAvgWindowHandle()
+
         libavg.avg.Player.get().setOnFrameHandler(self.__poll)
 
     def onKeyDown(self, event):
         if event.keystring == 'b':
-            game = self.games[self.currentGame]
-            self.addLogLine('Starting %s' % game.name)
+            game = self.gamesRegistry.getNextGame()
+            self.addLogLine('Starting %s' % game['name'])
             self.proc = GameLauncher(game)
             self.proc.start()
             libavg.avg.Player.get().setTimeout(3000, self.startKeyFlow)
-            libavg.avg.Player.get().setTimeout(5000, self.terminateApp)
+            libavg.avg.Player.get().setTimeout(60000, self.terminateApp)
 
     def addLogLine(self, line):
         self.logLines.append(line)
@@ -221,33 +265,33 @@ class T(libavg.AVGApp):
     def terminateApp(self):
         self.__setFocusBack()
 
-        self.addLogLine('Terminating %s' % self.games[self.currentGame].name)
-        self.currentGame = (self.currentGame + 1) % len(self.games)
-        self.proc.terminate()
-        self.proc = None
+        if self.proc is not None:
+            self.addLogLine('Terminating %s' % self.proc.game['name'])
+            self.proc.terminate()
+            self.proc = None
 
     def __poll(self):
         if self.proc and self.proc.state in (self.proc.STATE_TERMINATED, self.proc.STATE_ERROR):
             self.__setFocusBack()
+            self.addLogLine('%s crashed or exited' % self.proc.game['name'])
             self.proc = None
-            self.addLogLine('%s crashed or exited' % self.games[self.currentGame].name)
 
     def __setFocusBack(self):
         self.propagateKeys = False
 
+#        win32gui.SetForegroundWindow(avgwin[0])
+        win32gui.ShowWindow(self.avgWindowHandle, win32con.SW_MAXIMIZE)
+
+    def __saveAvgWindowHandle(self):
         toplist = []
         winlist = []
         def enum_callback(hwnd, results):
             winlist.append((hwnd, win32gui.GetWindowText(hwnd)))
 
         win32gui.EnumWindows(enum_callback, toplist)
-        avgwin = [(hwnd, title) for hwnd, title in winlist if 'avg' in title.lower()]
+        windows = [(hwnd, title) for hwnd, title in winlist if 'avg' in title.lower()]
         # just grab the first window that matches
-        avgwin = avgwin[0]
-
-        # use the window handle to set focus
-        win32gui.SetForegroundWindow(avgwin[0])
-        win32gui.ShowWindow(avgwin[0], win32con.SW_MAXIMIZE)
+        self.avgWindowHandle = windows[0][0]
 
     def __onU0StateChanged(self, index, state):
         if self.propagateKeys:
@@ -258,4 +302,4 @@ if __name__ == '__main__':
     import os
 
     os.environ['AVG_DEPLOY'] = '1'
-    T.start(resolution=(1920, 1080))
+    LauncherApp.start(resolution=(1920, 1080))
