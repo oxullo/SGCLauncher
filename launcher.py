@@ -78,6 +78,13 @@ class GameLauncher(threading.Thread):
         self.popen = None
         self.state = self.STATE_INITIALIZING
 
+        if not os.path.isdir(self.game['path']):
+            raise RuntimeError('Unexistent path %s (game: %s)' % (
+                    self.game['path'], self.game))
+        elif not os.path.isfile(os.path.join(self.game['path'], self.game['exe'])):
+            raise RuntimeError('Exe %s not found (game: %s)' % (
+                    os.path.join(self.game['path'], self.game['exe']), self.game))
+
     def run(self):
         try:
             self.popen = subprocess.Popen(
@@ -133,7 +140,7 @@ class U0Interface(object):
                 mask = int(line)
                 logging.debug('mask: %s' % mask)
             except ValueError:
-                logging.warning('Garbage received from serial: %s' % str(list(line)))
+                logging.debug('Garbage received from serial: %s' % str(list(line)))
             else:
                 self.__notify(mask)
 
@@ -182,6 +189,7 @@ class MyConfigParser(ConfigParser.ConfigParser):
 
 class GamesRegistry(object):
     GAMES_SUBDIR = 'games'
+    DEFAULT_KEYSDELAY = 5
 
     def __init__(self, gamesConfig='games.ini'):
         config = MyConfigParser()
@@ -201,6 +209,8 @@ class GamesRegistry(object):
                 game['name'] = config.getDefaulted(section, 'name', None)
                 game['author'] = config.getDefaulted(section, 'author', None)
                 game['description'] = config.getDefaulted(section, 'description', None)
+                game['keysdelay'] = config.getDefaulted(section, 'keysdelay',
+                        self.DEFAULT_KEYSDELAY)
 
                 logging.debug('Configuring game %s' % section)
                 self.__games.append(game)
@@ -245,12 +255,17 @@ class LauncherApp(libavg.AVGApp):
 
     def onKeyDown(self, event):
         if event.keystring == 'b':
+            # This is kinda relevant. Some games won't start if another
+            # fullscreen app is stealing the context
+            win32gui.ShowWindow(self.avgWindowHandle, win32con.SW_FORCEMINIMIZE)
+
             game = self.gamesRegistry.getNextGame()
             self.addLogLine('Starting %s' % game['name'])
             self.proc = GameLauncher(game)
+
             self.proc.start()
-            libavg.avg.Player.get().setTimeout(3000, self.startKeyFlow)
-            libavg.avg.Player.get().setTimeout(60000, self.terminateApp)
+            libavg.avg.Player.get().setTimeout(game['keysdelay'] * 1000,
+                    self.startKeyFlow)
 
     def addLogLine(self, line):
         self.logLines.append(line)
@@ -258,6 +273,7 @@ class LauncherApp(libavg.AVGApp):
             self.logLines = self.logLines[1:]
 
         self.log.text = '<br/>'.join(self.logLines)
+        logging.info(line)
 
     def startKeyFlow(self):
         self.propagateKeys = True
@@ -302,4 +318,4 @@ if __name__ == '__main__':
     import os
 
     os.environ['AVG_DEPLOY'] = '1'
-    LauncherApp.start(resolution=(1920, 1080))
+    LauncherApp.start(resolution=(1280, 800))
