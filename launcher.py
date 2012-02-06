@@ -2,7 +2,7 @@
 # -*- coding: utf-8 -*-
 #
 # STATTMEDIA GAME CONTEST games launcher
-# Copyright (c) 2010-2011 OXullo Intersecans <x@brainrapers.org>. All rights reserved.
+# Copyright (c) 2011-2012 OXullo Intersecans <x@brainrapers.org>. All rights reserved.
 # 
 # Redistribution and use in source and binary forms, with or without modification, are
 # permitted provided that the following conditions are met:
@@ -46,6 +46,10 @@ import win32process
 import libavg
 from libavg import avg
 libavg.player = avg.Player.get()
+
+import engine
+import states
+
 
 TH32CS_SNAPPROCESS = 0x00000002
 class PROCESSENTRY32(ctypes.Structure):
@@ -235,69 +239,10 @@ class GamesRegistry(object):
 
         return self.__games[self.__gamePtr]
 
-class SGCText(libavg.avg.WordsNode):
-    def __init__(self, **kwargs):
-        kwargs['font'] = 'Geogrotesque'
-        kwargs['variant'] = 'Medium'
-        super(SGCText, self).__init__(**kwargs)
 
-class BlueText(SGCText):
-    def __init__(self, **kwargs):
-        kwargs['color'] = '48a5ae'
-        super(BlueText, self).__init__(**kwargs)
-
-class YellowText(SGCText):
-    def __init__(self, **kwargs):
-        kwargs['color'] = 'f0e345'
-        super(YellowText, self).__init__(**kwargs)
-
-
-class LauncherApp(libavg.AVGApp):
+class LauncherApp(engine.Application):
     def init(self):
-        libavg.avg.ImageNode(href='media/background.png', parent=self._parentNode)
-
-        BlueText(text='NOW PLAYING',
-                fontsize=78,
-                pos=(710, 207),
-                parent=self._parentNode)
-
-        YellowText(text='THE NAME OF THE GAME',
-                fontsize=107,
-                pos=(710, 273),
-                parent=self._parentNode)
-
-        BlueText(text='AUTHOR',
-                fontsize=60,
-                pos=(710, 434),
-                parent=self._parentNode)
-
-        BlueText(text='PLAYERS',
-                fontsize=60,
-                pos=(1298, 434),
-                parent=self._parentNode)
-
-        BlueText(text='DESCRIPTION',
-                fontsize=60,
-                pos=(710, 674),
-                parent=self._parentNode)
-
-        YellowText(text='THE NAME OF THE AUTHOR/S',
-                fontsize=60,
-                pos=(710, 500),
-                size=(536, 186),
-                parent=self._parentNode)
-
-        YellowText(text='Lorem ipsum dolor sit amet, consectetur adipiscing elit. Praesent adipiscing sem sed turpis gravida id rutrum mi ullamcorper. Nulla ac rhoncus nisi. In et ligula non mi interdum pharetra.'.upper(),
-                fontsize=48,
-                pos=(710, 747),
-                size=(1160, 306),
-                parent=self._parentNode)
-
-        YellowText(text='2 TO 5',
-                fontsize=108,
-                pos=(1298, 487),
-                parent=self._parentNode)
-
+        avg.ImageNode(href='background.png', parent=self._parentNode)
         self.logLines = []
         self.log = libavg.avg.WordsNode(pos=(100, 100), parent=self._parentNode)
         self.addLogLine('Idling')
@@ -313,21 +258,26 @@ class LauncherApp(libavg.AVGApp):
 
         self.__saveAvgWindowHandle()
 
+        self.registerState('Intro', states.IntroState())
+        self.registerState('Vote', states.VoteState())
+
         libavg.player.setOnFrameHandler(self.__poll)
 
-    def onKeyDown(self, event):
-        if event.keystring == 'b':
-            # This is kinda relevant. Some games won't start if another
-            # fullscreen app is stealing the context
-            win32gui.ShowWindow(self.avgWindowHandle, win32con.SW_FORCEMINIMIZE)
+        self.bootstrap('Intro')
 
-            game = self.gamesRegistry.getNextGame()
-            self.addLogLine('Starting %s' % game['name'])
-            self.proc = GameLauncher(game)
-
-            self.proc.start()
-            libavg.player.setTimeout(game['keysdelay'] * 1000,
-                    self.startKeyFlow)
+#    def onKeyDown(self, event):
+#        if event.keystring == 'b':
+#            # This is kinda relevant. Some games won't start if another
+#            # fullscreen app is stealing the context
+#            win32gui.ShowWindow(self.avgWindowHandle, win32con.SW_FORCEMINIMIZE)
+#
+#            game = self.gamesRegistry.getNextGame()
+#            self.addLogLine('Starting %s' % game['name'])
+#            self.proc = GameLauncher(game)
+#
+#            self.proc.start()
+#            libavg.player.setTimeout(game['keysdelay'] * 1000,
+#                    self.startKeyFlow)
 
     def addLogLine(self, line):
         self.logLines.append(line)
