@@ -44,6 +44,8 @@ import win32gui
 import win32process
 
 import libavg
+from libavg import avg
+libavg.player = avg.Player.get()
 
 TH32CS_SNAPPROCESS = 0x00000002
 class PROCESSENTRY32(ctypes.Structure):
@@ -130,7 +132,7 @@ class U0Interface(object):
         self.__oldStates = [False] * 5
         self.__cbStateChanged = cbStateChanged
 
-        libavg.avg.Player.get().setOnFrameHandler(self.__poll)
+        libavg.player.setOnFrameHandler(self.__poll)
 
     def __poll(self):
         line = self.__serialObj.readline()
@@ -233,9 +235,69 @@ class GamesRegistry(object):
 
         return self.__games[self.__gamePtr]
 
+class SGCText(libavg.avg.WordsNode):
+    def __init__(self, **kwargs):
+        kwargs['font'] = 'Geogrotesque'
+        kwargs['variant'] = 'Medium'
+        super(SGCText, self).__init__(**kwargs)
+
+class BlueText(SGCText):
+    def __init__(self, **kwargs):
+        kwargs['color'] = '48a5ae'
+        super(BlueText, self).__init__(**kwargs)
+
+class YellowText(SGCText):
+    def __init__(self, **kwargs):
+        kwargs['color'] = 'f0e345'
+        super(YellowText, self).__init__(**kwargs)
+
 
 class LauncherApp(libavg.AVGApp):
     def init(self):
+        libavg.avg.ImageNode(href='media/background.png', parent=self._parentNode)
+
+        BlueText(text='NOW PLAYING',
+                fontsize=78,
+                pos=(710, 207),
+                parent=self._parentNode)
+
+        YellowText(text='THE NAME OF THE GAME',
+                fontsize=107,
+                pos=(710, 273),
+                parent=self._parentNode)
+
+        BlueText(text='AUTHOR',
+                fontsize=60,
+                pos=(710, 434),
+                parent=self._parentNode)
+
+        BlueText(text='PLAYERS',
+                fontsize=60,
+                pos=(1298, 434),
+                parent=self._parentNode)
+
+        BlueText(text='DESCRIPTION',
+                fontsize=60,
+                pos=(710, 674),
+                parent=self._parentNode)
+
+        YellowText(text='THE NAME OF THE AUTHOR/S',
+                fontsize=60,
+                pos=(710, 500),
+                size=(536, 186),
+                parent=self._parentNode)
+
+        YellowText(text='Lorem ipsum dolor sit amet, consectetur adipiscing elit. Praesent adipiscing sem sed turpis gravida id rutrum mi ullamcorper. Nulla ac rhoncus nisi. In et ligula non mi interdum pharetra.'.upper(),
+                fontsize=48,
+                pos=(710, 747),
+                size=(1160, 306),
+                parent=self._parentNode)
+
+        YellowText(text='2 TO 5',
+                fontsize=108,
+                pos=(1298, 487),
+                parent=self._parentNode)
+
         self.logLines = []
         self.log = libavg.avg.WordsNode(pos=(100, 100), parent=self._parentNode)
         self.addLogLine('Idling')
@@ -251,7 +313,7 @@ class LauncherApp(libavg.AVGApp):
 
         self.__saveAvgWindowHandle()
 
-        libavg.avg.Player.get().setOnFrameHandler(self.__poll)
+        libavg.player.setOnFrameHandler(self.__poll)
 
     def onKeyDown(self, event):
         if event.keystring == 'b':
@@ -264,7 +326,7 @@ class LauncherApp(libavg.AVGApp):
             self.proc = GameLauncher(game)
 
             self.proc.start()
-            libavg.avg.Player.get().setTimeout(game['keysdelay'] * 1000,
+            libavg.player.setTimeout(game['keysdelay'] * 1000,
                     self.startKeyFlow)
 
     def addLogLine(self, line):
@@ -318,4 +380,4 @@ if __name__ == '__main__':
     import os
 
     os.environ['AVG_DEPLOY'] = '1'
-    LauncherApp.start(resolution=(1280, 800))
+    LauncherApp.start(resolution=(1920, 1080))
