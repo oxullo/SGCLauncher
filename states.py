@@ -33,27 +33,23 @@ from libavg import avg
 
 import engine
 import helpers
+import registry
 
 class IntroState(engine.FadeGameState):
     def _init(self):
         helpers.BlueText(text='NOW PLAYING',
                 fontsize=78,
-                pos=(710, 207),
+                pos=(600, 207),
                 parent=self)
 
-        helpers.YellowText(text='THE NAME OF THE GAME',
-                fontsize=107,
-                pos=(710, 273),
-                parent=self)
-
-        helpers.BlueText(text='AUTHOR',
+        helpers.BlueText(text='AUTHOR/S',
                 fontsize=60,
                 pos=(710, 434),
                 parent=self)
 
         helpers.BlueText(text='PLAYERS',
                 fontsize=60,
-                pos=(1298, 434),
+                pos=(1498, 434),
                 parent=self)
 
         helpers.BlueText(text='DESCRIPTION',
@@ -61,26 +57,40 @@ class IntroState(engine.FadeGameState):
                 pos=(710, 674),
                 parent=self)
 
-        helpers.YellowText(text='THE NAME OF THE AUTHOR/S',
-                fontsize=60,
-                pos=(710, 500),
-                size=(536, 186),
+        self.__name = helpers.YellowText(
+                fontsize=107,
+                pos=(600, 273),
                 parent=self)
 
-        helpers.YellowText(text='Lorem ipsum dolor sit amet, consectetur adipiscing elit. Praesent adipiscing sem sed turpis gravida id rutrum mi ullamcorper. Nulla ac rhoncus nisi. In et ligula non mi interdum pharetra.'.upper(),
+        self.__author = helpers.YellowText(
+                fontsize=60,
+                pos=(710, 500),
+                size=(736, 186),
+                parent=self)
+
+        self.__description = helpers.YellowText(
                 fontsize=48,
                 pos=(710, 747),
                 size=(1160, 306),
                 parent=self)
 
-        helpers.YellowText(text='2 TO 5',
+        self.__players = helpers.YellowText(
                 fontsize=108,
-                pos=(1298, 487),
+                pos=(1498, 487),
                 parent=self)
 
     def _onKeyDown(self, event):
         if event.keystring == 'n':
-            self.app.changeState('Vote')
+            self.setupGameInfo(registry.games.getNextGame())
+        elif event.keystring == 'p':
+            self.setupGameInfo(registry.games.getPrevGame())
+
+    def setupGameInfo(self, game):
+        self.__name.text = game['name'].upper()
+        self.__author.text = game['author'].upper()
+        self.__description.text = game['description'].upper()
+        self.__players.text = game['players'].upper()
+
 
 class VoteState(engine.FadeGameState):
     def _init(self):

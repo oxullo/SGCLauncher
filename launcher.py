@@ -35,8 +35,6 @@ import time
 import logging
 import serial
 
-import ConfigParser
-
 import ctypes
 import win32api
 import win32con
@@ -49,6 +47,7 @@ libavg.player = avg.Player.get()
 
 import engine
 import states
+import registry
 
 
 TH32CS_SNAPPROCESS = 0x00000002
@@ -185,61 +184,6 @@ class U0KeyTranslator(object):
         logging.debug('Sent key 0x%x, eventf=%d' % (vkey, eventf))
 
 
-class MyConfigParser(ConfigParser.ConfigParser):
-    def getDefaulted(self, section, option, default):
-        if self.has_option(section, option):
-            return self.get(section, option)
-        else:
-            return default
-
-
-class GamesRegistry(object):
-    GAMES_SUBDIR = 'games'
-    DEFAULT_KEYSDELAY = 5
-
-    def __init__(self, gamesConfig='games.ini'):
-        config = MyConfigParser()
-        config.read(gamesConfig)
-
-        basePath = os.path.join(os.path.dirname(os.path.abspath(__file__)),
-                self.GAMES_SUBDIR)
-
-        self.__games = []
-        for section in config.sections():
-            if config.getboolean(section, 'active'):
-                game = dict()
-
-                game['shortname'] = section
-                game['path'] = os.path.join(basePath, config.get(section, 'path'))
-                game['exe'] = config.get(section, 'exe')
-                game['name'] = config.getDefaulted(section, 'name', None)
-                game['author'] = config.getDefaulted(section, 'author', None)
-                game['description'] = config.getDefaulted(section, 'description', None)
-                game['keysdelay'] = config.getDefaulted(section, 'keysdelay',
-                        self.DEFAULT_KEYSDELAY)
-
-                logging.debug('Configuring game %s' % section)
-                self.__games.append(game)
-
-        self.__gamePtr = 0
-
-    def getNextGame(self):
-        self.__gamePtr += 1
-
-        if self.__gamePtr == len(self.__games):
-            self.__gamePtr = 0
-
-        return self.__games[self.__gamePtr]
-
-    def getPrevGame(self):
-        self.__gamePtr -= 1
-
-        if self.__gamePtr == -1:
-            self.__gamePtr = len(self.__games) - 1
-
-        return self.__games[self.__gamePtr]
-
-
 class LauncherApp(engine.Application):
     def init(self):
         avg.ImageNode(href='background.png', parent=self._parentNode)
@@ -247,8 +191,6 @@ class LauncherApp(engine.Application):
         self.log = libavg.avg.WordsNode(pos=(100, 100), parent=self._parentNode)
         self.addLogLine('Idling')
         self.propagateKeys = False
-
-        self.gamesRegistry = GamesRegistry()
 
         self.proc = None
 
@@ -278,6 +220,8 @@ class LauncherApp(engine.Application):
 #            self.proc.start()
 #            libavg.player.setTimeout(game['keysdelay'] * 1000,
 #                    self.startKeyFlow)
+#        elif event.keystring == 'x':
+#            self.terminateApp()
 
     def addLogLine(self, line):
         self.logLines.append(line)
@@ -324,7 +268,6 @@ class LauncherApp(engine.Application):
     def __onU0StateChanged(self, index, state):
         if self.propagateKeys:
             self.u0KeyTranslator.stateToKey(index, state)
-
 
 if __name__ == '__main__':
     import os
