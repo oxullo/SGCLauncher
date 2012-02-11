@@ -88,5 +88,8 @@ class GamesRegistry(object):
 
         return self.__games[self.__gamePtr]
 
+    def getCurrentGame(self):
+        return self.__games[self.__gamePtr]
+
 
 games = GamesRegistry()

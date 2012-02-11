@@ -129,83 +129,25 @@ class GameLauncher(threading.Thread):
         win32api.CloseHandle(handle)
 
 
-class U0Interface(object):
-    def __init__(self, port, cbStateChanged):
-        self.__serialObj = serial.Serial(port, timeout=0)
-        self.__oldStates = [False] * 5
-        self.__cbStateChanged = cbStateChanged
-
-        libavg.player.setOnFrameHandler(self.__poll)
-
-    def __poll(self):
-        line = self.__serialObj.readline()
-        if line:
-            line = line.strip()
-            try:
-                mask = int(line)
-                logging.debug('mask: %s' % mask)
-            except ValueError:
-                logging.debug('Garbage received from serial: %s' % str(list(line)))
-            else:
-                self.__notify(mask)
-
-    def __notify(self, mask):
-        states = []
-
-        for i in xrange(6):
-            if mask & (1 << i):
-                thisState = True
-            else:
-                thisState = False
-
-            states.append(thisState)
-
-        self.__onStatesUpdate(states)
-
-    def __onStatesUpdate(self, states):
-        changed = [s1 != s2 for s1, s2 in zip(states, self.__oldStates)]
-
-        for i in xrange(5):
-            if changed[i]:
-                self.__cbStateChanged(i, states[i])
-
-        self.__oldStates = states
-
-
-class U0KeyTranslator(object):
-    def stateToKey(self, index, state):
-        vkey = 0x31 + index
-        scan = ctypes.windll.user32.MapVirtualKeyA(vkey + index, 0)
-
-        eventf = 0 if state else 2
-
-        ctypes.windll.user32.keybd_event(vkey, scan, eventf, 0)
-
-        logging.debug('Sent key 0x%x, eventf=%d' % (vkey, eventf))
-
-
 class LauncherApp(engine.Application):
     def init(self):
         avg.ImageNode(href='background.png', parent=self._parentNode)
-        self.logLines = []
-        self.log = libavg.avg.WordsNode(pos=(100, 100), parent=self._parentNode)
-        self.addLogLine('Idling')
-        self.propagateKeys = False
+#        self.propagateKeys = False
+#
+#        self.proc = None
+#
+#        self.propagateKeys = False
+#        self.u0Interface = U0Interface('COM3', self.__onU0StateChanged)
+#        self.u0KeyTranslator = U0KeyTranslator()
+#
+#        self.__saveAvgWindowHandle()
 
-        self.proc = None
-
-        self.propagateKeys = False
-        self.u0Interface = U0Interface('COM3', self.__onU0StateChanged)
-        self.u0KeyTranslator = U0KeyTranslator()
-
-        self.__saveAvgWindowHandle()
-
-        self.registerState('Intro', states.IntroState())
+        self.registerState('Info', states.InfoState())
         self.registerState('Vote', states.VoteState())
 
-        libavg.player.setOnFrameHandler(self.__poll)
+#        libavg.player.setOnFrameHandler(self.__poll)
 
-        self.bootstrap('Intro')
+        self.bootstrap('Info')
 
 #    def onKeyDown(self, event):
 #        if event.keystring == 'b':
