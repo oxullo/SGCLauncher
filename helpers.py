@@ -132,3 +132,64 @@ class VoteArbitrator(object):
                 self.__currentVote += 1
 
         self.__voteChangedCb(self.__currentVote, self.__mask)
+
+
+class VoteTimer(avg.DivNode):
+    VOTE_TIME = 5
+    HURRYUP_AFTER = 3
+
+    def __init__(self, timerElapsedCb, **kwargs):
+        super(VoteTimer, self).__init__(**kwargs)
+
+        self.__timerElapsedCb = timerElapsedCb
+
+        self.__hurryup = HurryupIcon(pos=(360, 130), parent=self)
+
+        BlueText(text='CLOSING VOTE IN',
+                fontsize=77,
+                pos=(0, 0),
+                parent=self)
+
+        self.__voteTime = YellowText(
+                fontsize=144,
+                pos=(300, 78),
+                alignment='center',
+                parent=self)
+
+        self.__tmrClock = None
+        self.__timeLeft = None
+
+    def start(self):
+        self.opacity = 1
+        self.__timeLeft = self.VOTE_TIME
+        self.__tmrClock = libavg.player.setInterval(1000, self.__tick)
+        self.__syncTimeLeft()
+
+    def reset(self):
+        self.__killTimer()
+
+    def __tick(self):
+        self.__timeLeft -= 1
+
+        self.__syncTimeLeft()
+
+        if self.__timeLeft == 0:
+            self.__onTimerElapsed()
+            self.__killTimer()
+
+    def __syncTimeLeft(self):
+        self.__voteTime.text = '%ds' % self.__timeLeft
+        if self.__timeLeft > self.HURRYUP_AFTER:
+            self.__hurryup.deactivate()
+        else:
+            self.__hurryup.activate()
+
+    def __onTimerElapsed(self):
+        avg.fadeOut(self, 300)
+        self.__killTimer()
+        self.__timerElapsedCb()
+
+    def __killTimer(self):
+        if self.__tmrClock is not None:
+            libavg.player.clearInterval(self.__tmrClock)
+            self.__tmrClock = None

@@ -101,18 +101,14 @@ class InfoState(engine.FadeGameState):
 
 
 class VoteState(engine.FadeGameState):
-    VOTE_TIME = 5
-    HURRYUP_AFTER = 3
     VOTE_TEXTS = ['LIKED IT? STEP ON A PAD!', 'NOT SO MANY FANS',
             'NO MORE FANS?', 'BLABLA',
             'FROB FRAB', 'OUTSTANDING!']
 
     def _init(self):
-        self.__divRealtimeVote = avg.DivNode(parent=self)
+        self.__voteTimer = helpers.VoteTimer(self.__onTimerElapsed,
+                pos=(1285, 461), parent=self)
         self.__divFinalVote = avg.DivNode(parent=self)
-
-        self.__hurryup = helpers.HurryupIcon(pos=(1645, 591),
-                parent=self.__divRealtimeVote)
 
         helpers.BlueText(text='NOW VOTING',
                 fontsize=78,
@@ -123,11 +119,6 @@ class VoteState(engine.FadeGameState):
                 fontsize=120,
                 pos=(878, 546),
                 parent=self.__divFinalVote)
-
-        helpers.BlueText(text='CLOSING VOTE IN',
-                fontsize=77,
-                pos=(1285, 461),
-                parent=self.__divRealtimeVote)
 
         self.__name = helpers.YellowText(
                 fontsize=107,
@@ -144,12 +135,6 @@ class VoteState(engine.FadeGameState):
                 pos=(733, 685),
                 parent=self.__divFinalVote)
 
-        self.__voteTime = helpers.YellowText(
-                fontsize=144,
-                pos=(1564, 539),
-                alignment='center',
-                parent=self.__divRealtimeVote)
-
         self.__pacs = []
         for i in xrange(5):
             avg.ImageNode(href='u0pad.png', pos=(687 + 230 * i, 834),
@@ -160,8 +145,6 @@ class VoteState(engine.FadeGameState):
                     opacity=0,
                     parent=self))
 
-        self.__tmrClock = None
-        self.__timeLeft = None
         self.__voteArbitrator = helpers.VoteArbitrator(self.__onVoteChanged)
 
     def setupGameInfo(self, game):
@@ -179,33 +162,14 @@ class VoteState(engine.FadeGameState):
 
     def _preTransIn(self):
         self.setupGameInfo(registry.games.getCurrentGame())
-        self.__tmrClock = libavg.player.setInterval(1000, self.__tick)
         self.__voteArbitrator.reset()
         self.__divFinalVote.x = 0
         self.__voteText.opacity = 1
-        self.__divRealtimeVote.opacity = 1
-        self.__timeLeft = self.VOTE_TIME
-        self.__syncTimeLeft()
+        self.__voteTimer.start()
 
     def _preTransOut(self):
         registry.games.getNextGame()
-        self.__resetTimer()
-
-    def __tick(self):
-        self.__timeLeft -= 1
-
-        self.__syncTimeLeft()
-
-        if self.__timeLeft == 0:
-            self.__onTimerElapsed()
-            self.__resetTimer()
-
-    def __syncTimeLeft(self):
-        self.__voteTime.text = '%ds' % self.__timeLeft
-        if self.__timeLeft > self.HURRYUP_AFTER:
-            self.__hurryup.deactivate()
-        else:
-            self.__hurryup.activate()
+        self.__voteTimer.reset()
 
     def __onVoteChanged(self, vote, mask):
         for index, state in enumerate(mask):
@@ -215,12 +179,6 @@ class VoteState(engine.FadeGameState):
         self.__voteText.text = self.VOTE_TEXTS[vote]
 
     def __onTimerElapsed(self):
-        avg.fadeOut(self.__divRealtimeVote, 300)
         self.__voteArbitrator.freeze()
         avg.EaseInOutAnim(self.__divFinalVote, 'x', 400, 0, 300, 200, 300).start()
         self.__voteText.opacity = 0
-
-    def __resetTimer(self):
-        if self.__tmrClock is not None:
-            libavg.player.clearInterval(self.__tmrClock)
-            self.__tmrClock = None
