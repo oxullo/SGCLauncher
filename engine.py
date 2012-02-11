@@ -158,6 +158,40 @@ class HiscoreDatabase(object):
 
         return True
 
+
+class PeriodicTimerSpecs(object):
+    def __init__(self, interval, callback):
+        self.interval = interval
+        self.callback = callback
+        self.timerId = None
+
+    def start(self):
+        assert self.timerId is None
+        self.timerId = g_Player.setInterval(self.interval, self.callback)
+
+    def kill(self):
+        assert self.timerId is not None
+        g_Player.clearInterval(self.timerId)
+        self.timerId = None
+
+
+class OneShotTimerSpecs(object):
+    def __init__(self, delay, callback):
+        self.delay = delay
+        self.callback = callback
+        self.elapsed = False
+        self.timerId = g_Player.setTimeout(self.delay, self.__onTimerElapsed)
+
+    def __onTimerElapsed(self):
+        self.elapsed = True
+        self.callback()
+
+    def kill(self):
+        assert self.timerId is not None
+        if not self.elapsed:
+            g_Player.clearInterval(self.timerId)
+
+
 class GameState(avg.DivNode):
     def __init__(self, *args, **kwargs):
         super(GameState, self).__init__(*args, **kwargs)
@@ -165,6 +199,7 @@ class GameState(avg.DivNode):
         self._bgTrack = None
         self._maxBgTrackVolume = 1
         self.opacity = 0
+        self._timers = []
         self.sensitive = False
 
     def init(self, app):
@@ -175,6 +210,12 @@ class GameState(avg.DivNode):
         self._bgTrack = SoundManager.getSample(fileName, loop=True)
         self._bgTrack.volume = maxVolume
         self._maxBgTrackVolume = maxVolume
+
+    def registerPeriodicTimer(self, period, callback):
+        self._timers.append(PeriodicTimerSpecs(period, callback))
+
+    def registerOneShotTimer(self, delay, callback):
+        self._timers.append(OneShotTimerSpecs(delay, callback))
 
     def update(self, dt):
         self._update(dt)
@@ -197,6 +238,7 @@ class GameState(avg.DivNode):
         self.sensitive = True
         if self._bgTrack:
             self._bgTrack.play()
+        self._startTimers()
 
     def leave(self):
         self.sensitive = False
@@ -204,6 +246,7 @@ class GameState(avg.DivNode):
         self.opacity = 0
         if self._bgTrack:
             self._bgTrack.stop()
+        self._killTimers()
 
     def _init(self):
         pass
@@ -232,6 +275,21 @@ class GameState(avg.DivNode):
     def _onKeyUp(self, event):
         pass
 
+    def _startTimers(self):
+        for timer in self._timers:
+            print 'Starting timer', timer
+            timer.start()
+
+    def _killTimers(self):
+        newTimersList = []
+        for timer in self._timers:
+            print 'Killing timer', timer
+            timer.kill()
+            if not isinstance(timer, OneShotTimerSpecs):
+                newTimersList.append(timer)
+
+        self._timers = newTimersList
+
 
 # Abstract
 class TransitionGameState(GameState):
@@ -242,6 +300,7 @@ class TransitionGameState(GameState):
         self._doTransIn(self.__postTransIn)
         if self._bgTrack:
             self._doBgTrackTransIn()
+        self._startTimers()
 
     def leave(self):
         self.sensitive = False
@@ -250,6 +309,7 @@ class TransitionGameState(GameState):
         self._doTransOut(self.__postTransOut)
         if self._bgTrack:
             self._doBgTrackTransOut()
+        self._killTimers()
 
     def _doTransIn(self, postCb):
         raise NotImplementedError()

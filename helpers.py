@@ -128,13 +128,13 @@ class VoteArbitrator(object):
             self.__updateVote()
 
     def freeze(self):
-        print 'Final vote:', self.__currentVote
+        currentGame = registry.games.getCurrentGame()
 
-        handle = registry.games.getCurrentGame()['handle']
+        logging.info('Final vote for %s: %d' % (currentGame['name'], self.__currentVote))
 
         f = open(self.VOTE_FILE, 'a')
         print >> f, '%f\t%s\t%s\t%d\t%s' % (time.time(), datetime.datetime.now(),
-                handle, self.__currentVote, repr(self.__mask))
+                currentGame['handle'], self.__currentVote, repr(self.__mask))
         f.close()
         self.__state = self.STATE_VOTE_CLOSED
 

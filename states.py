@@ -28,12 +28,16 @@
 # authors and should not be interpreted as representing official policies, either 
 # expressed or implied, of OXullo Intersecans.
 
+import logging
+
 import libavg
 from libavg import avg
 
 import engine
 import helpers
 import registry
+import process
+
 
 class InfoState(engine.FadeGameState):
     def _init(self):
@@ -79,6 +83,9 @@ class InfoState(engine.FadeGameState):
                 pos=(1498, 487),
                 parent=self)
 
+        self.__currentProcess = None
+        self.registerPeriodicTimer(100, self.__pollStatus)
+
     def _preTransIn(self):
         self.setupGameInfo(registry.games.getCurrentGame())
 
@@ -88,7 +95,9 @@ class InfoState(engine.FadeGameState):
         elif event.keystring == 'p':
             self.setupGameInfo(registry.games.getPrevGame())
         elif event.keystring == 'v':
-            self.onGameExited()
+            self.__onGameExited()
+        elif event.keystring == 'x':
+            self.__runGame()
 
     def setupGameInfo(self, game):
         self.__name.text = game['name'].upper()
@@ -96,7 +105,22 @@ class InfoState(engine.FadeGameState):
         self.__description.text = game['description'].upper()
         self.__players.text = game['players'].upper()
 
-    def onGameExited(self):
+    def __pollStatus(self):
+        if (self.__currentProcess and
+                self.__currentProcess.state in (process.Process.STATE_TERMINATED,
+                        process.Process.STATE_ERROR)):
+            process.restoreLauncherWindow()
+            logging.info('%s crashed or exited' % self.__currentProcess.game['name'])
+            self.__currentProcess = None
+            self.__onGameExited()
+
+    def __runGame(self):
+        game = registry.games.getCurrentGame()
+        process.hideLauncherWindow()
+        self.__currentProcess = process.Process(game)
+        self.__currentProcess.start()
+
+    def __onGameExited(self):
         self.app.changeState('Vote')
 
 
@@ -182,3 +206,4 @@ class VoteState(engine.FadeGameState):
         self.__voteArbitrator.freeze()
         avg.EaseInOutAnim(self.__divFinalVote, 'x', 400, 0, 300, 200, 300).start()
         self.__voteText.opacity = 0
+        self.registerOneShotTimer(5000, lambda: self.app.changeState('Info'))

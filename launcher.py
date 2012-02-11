@@ -28,18 +28,7 @@
 # authors and should not be interpreted as representing official policies, either 
 # expressed or implied, of OXullo Intersecans.
 
-import os
-import subprocess
-import threading
-import time
 import logging
-import serial
-
-import ctypes
-import win32api
-import win32con
-import win32gui
-import win32process
 
 import libavg
 from libavg import avg
@@ -48,89 +37,14 @@ libavg.player = avg.Player.get()
 import engine
 import states
 import registry
-
-
-TH32CS_SNAPPROCESS = 0x00000002
-class PROCESSENTRY32(ctypes.Structure):
-    _fields_ = [("dwSize", ctypes.c_ulong),
-        ("cntUsage", ctypes.c_ulong),
-        ("th32ProcessID", ctypes.c_ulong),
-        ("th32DefaultHeapID", ctypes.c_ulong),
-        ("th32ModuleID", ctypes.c_ulong),
-        ("cntThreads", ctypes.c_ulong),
-        ("th32ParentProcessID", ctypes.c_ulong),
-        ("pcPriClassBase", ctypes.c_ulong),
-        ("dwFlags", ctypes.c_ulong),
-        ("szExeFile", ctypes.c_char * 260)]
-
-
-class Game(object):
-    def __init__(self, name, path, exe):
-        self.name = name
-        self.path = path
-        self.exe = exe
-
-class GameLauncher(threading.Thread):
-    STATE_INITIALIZING = 'STATE_INITIALIZING'
-    STATE_RUNNING = 'STATE_RUNNING'
-    STATE_TERMINATED = 'STATE_TERMINATED'
-    STATE_ERROR = 'STATE_ERROR'
-
-    def __init__(self, game, *args, **kwargs):
-        super(GameLauncher, self).__init__(*args, **kwargs)
-        self.game = game
-        self.env = None
-        self.popen = None
-        self.state = self.STATE_INITIALIZING
-
-        if not os.path.isdir(self.game['path']):
-            raise RuntimeError('Unexistent path %s (game: %s)' % (
-                    self.game['path'], self.game))
-        elif not os.path.isfile(os.path.join(self.game['path'], self.game['exe'])):
-            raise RuntimeError('Exe %s not found (game: %s)' % (
-                    os.path.join(self.game['path'], self.game['exe']), self.game))
-
-    def run(self):
-        try:
-            self.popen = subprocess.Popen(
-                    os.path.join(self.game['path'], self.game['exe']),
-                    bufsize= -1,
-                    cwd=self.game['path'],
-                    shell=False,
-                    stderr=subprocess.PIPE,
-                    stdin=subprocess.PIPE,
-                    stdout=subprocess.PIPE,
-                    env=self.env,
-                    close_fds=False)
-        except Exception, e:
-            self.state = self.STATE_ERROR
-            logging.error('Cannot start game %s: %s' % (self.game['shortname'], e))
-            return
-
-        self.popen.stdin.close()
-        self.popen.stdout.close()
-        self.state = self.STATE_RUNNING
-
-        while self.popen.poll() is None:
-            try:
-                ln = self.popen.stderr.readline().strip()
-            except Exception, e:
-                logging.info('Game launcher %s ended' % self.game['shortname'])
-                break
-            else:
-                if ln:
-                    print 'STDERR:', ln
-
-        self.state = self.STATE_TERMINATED
-
-    def terminate(self):
-        handle = win32api.OpenProcess(win32con.PROCESS_TERMINATE, 0, self.popen.pid)
-        win32api.TerminateProcess(handle, 0)
-        win32api.CloseHandle(handle)
+import process
 
 
 class LauncherApp(engine.Application):
     def init(self):
+        logging.getLogger().setLevel(logging.DEBUG)
+        process.init()
+
         avg.ImageNode(href='background.png', parent=self._parentNode)
 #        self.propagateKeys = False
 #
@@ -165,14 +79,6 @@ class LauncherApp(engine.Application):
 #        elif event.keystring == 'x':
 #            self.terminateApp()
 
-    def addLogLine(self, line):
-        self.logLines.append(line)
-        if len(self.logLines) > 30:
-            self.logLines = self.logLines[1:]
-
-        self.log.text = '<br/>'.join(self.logLines)
-        logging.info(line)
-
     def startKeyFlow(self):
         self.propagateKeys = True
 
@@ -195,17 +101,6 @@ class LauncherApp(engine.Application):
 
 #        win32gui.SetForegroundWindow(avgwin[0])
         win32gui.ShowWindow(self.avgWindowHandle, win32con.SW_MAXIMIZE)
-
-    def __saveAvgWindowHandle(self):
-        toplist = []
-        winlist = []
-        def enum_callback(hwnd, results):
-            winlist.append((hwnd, win32gui.GetWindowText(hwnd)))
-
-        win32gui.EnumWindows(enum_callback, toplist)
-        windows = [(hwnd, title) for hwnd, title in winlist if 'avg' in title.lower()]
-        # just grab the first window that matches
-        self.avgWindowHandle = windows[0][0]
 
     def __onU0StateChanged(self, index, state):
         if self.propagateKeys:
