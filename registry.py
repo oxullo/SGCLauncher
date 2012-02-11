@@ -57,7 +57,7 @@ class GamesRegistry(object):
             if config.getboolean(section, 'active'):
                 game = dict()
 
-                game['shortname'] = section
+                game['handle'] = section
                 game['path'] = os.path.join(basePath, config.get(section, 'path'))
                 game['exe'] = config.get(section, 'exe')
                 game['name'] = config.getDefaulted(section, 'name', None)

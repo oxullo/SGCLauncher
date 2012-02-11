@@ -28,10 +28,14 @@
 # authors and should not be interpreted as representing official policies, either 
 # expressed or implied, of OXullo Intersecans.
 
+import time
+import datetime
 import logging
 
 import libavg
 from libavg import avg
+
+import registry
 
 
 class SGCText(avg.WordsNode):
@@ -87,6 +91,8 @@ class VoteArbitrator(object):
     STATE_VOTE_OPEN = 'STATE_VOTE_OPEN'
     STATE_VOTE_CLOSED = 'STATE_VOTE_CLOSED'
 
+    VOTE_FILE = 'votes.csv'
+
     def __init__(self, voteChangedCb):
         self.__voteChangedCb = voteChangedCb
         self.reset()
@@ -123,6 +129,13 @@ class VoteArbitrator(object):
 
     def freeze(self):
         print 'Final vote:', self.__currentVote
+
+        handle = registry.games.getCurrentGame()['handle']
+
+        f = open(self.VOTE_FILE, 'a')
+        print >> f, '%f\t%s\t%s\t%d\t%s' % (time.time(), datetime.datetime.now(),
+                handle, self.__currentVote, repr(self.__mask))
+        f.close()
         self.__state = self.STATE_VOTE_CLOSED
 
     def __updateVote(self):
