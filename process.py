@@ -122,14 +122,9 @@ class Process(threading.Thread):
         if self.state != self.STATE_RUNNING:
             return False
         else:
-            myWinList = []
-            allWinList = getWindowsList()
-            for hwnd, title in allWinList:
-                thrid, pid = win32process.GetWindowThreadProcessId(hwnd)
-                if pid == self.__popen.pid:
-                    myWinList.append(hwnd)
-
-            return win32gui.GetForegroundWindow() in myWinList
+            fgHwnd = win32gui.GetForegroundWindow()
+            thrid, pid = win32process.GetWindowThreadProcessId(fgHwnd)
+            return pid == self.__popen.pid
 
 def getWindowsList():
     winlist = []
