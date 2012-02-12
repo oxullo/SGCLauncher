@@ -72,7 +72,8 @@ class U0Relay(object):
             self.__readBuffer = ''
             logging.debug('mask: %s' % mask)
         except ValueError:
-            logging.debug('Garbage received from serial: %s' % str(list(line)))
+            logging.warning('Garbage received from serial'
+                    ': %s' % str(list(self.__readBuffer)))
         else:
             self.__processMask(mask)
 
