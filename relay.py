@@ -55,9 +55,8 @@ class U0Relay(object):
         self.__isRelayActive = active
 
     def __poll(self):
-        line = self.__serialObj.readline()
+        line = self.__serialObj.readline().strip()
         if line:
-            line = line.strip()
             try:
                 mask = int(line)
                 logging.debug('mask: %s' % mask)
