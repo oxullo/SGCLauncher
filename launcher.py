@@ -46,6 +46,8 @@ class LauncherApp(engine.Application):
     def init(self):
         if DEBUG:
             logging.getLogger().setLevel(logging.DEBUG)
+        else:
+            logging.getLogger().setLevel(logging.INFO)
 
         process.init()
         relay.init('COM3')
