@@ -149,11 +149,6 @@ class VoteState(engine.FadeGameState):
                 pos=(600, 207),
                 parent=self)
 
-        helpers.YellowText(text='VOTES',
-                fontsize=120,
-                pos=(878, 546),
-                parent=self.__divFinalVote)
-
         self.__name = helpers.YellowText(
                 fontsize=107,
                 pos=(600, 273),
@@ -167,6 +162,11 @@ class VoteState(engine.FadeGameState):
         self.__voteText = helpers.YellowText(
                 fontsize=57,
                 pos=(733, 685),
+                parent=self.__divFinalVote)
+
+        self.__voteLabel = helpers.YellowText(text='VOTES',
+                fontsize=120,
+                pos=(878, 546),
                 parent=self.__divFinalVote)
 
         self.__pacs = []
@@ -209,12 +209,17 @@ class VoteState(engine.FadeGameState):
         registry.games.getNextGame()
         self.__voteTimer.reset()
 
-    def __onVoteChanged(self, vote, mask):
+    def __onVoteChanged(self, votes, mask):
         for index, state in enumerate(mask):
             self.__pacs[index].opacity = 1 if state else 0
 
-        self.__vote.text = str(vote)
-        self.__voteText.text = self.VOTE_TEXTS[vote]
+        if votes == 1:
+            self.__voteLabel.text = 'VOTE'
+        else:
+            self.__voteLabel.text = 'VOTES'
+
+        self.__vote.text = str(votes)
+        self.__voteText.text = self.VOTE_TEXTS[votes]
 
     def __onTimerElapsed(self):
         self.__voteArbitrator.freeze()
