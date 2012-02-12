@@ -123,7 +123,7 @@ class VoteArbitrator(object):
         except ValueError:
             logging.error('Error while attempting to convert pad %s to index' % pad)
         else:
-            self.setVoteForIndex(padIndex)
+            self.setVoteByIndex(padIndex)
 
     def unsetVoteByKey(self, pad):
         try:
@@ -131,7 +131,7 @@ class VoteArbitrator(object):
         except ValueError:
             logging.error('Error while attempting to convert pad %s to index' % pad)
         else:
-            self.unsetVoteForIndex(padIndex)
+            self.unsetVoteByIndex(padIndex)
 
     def freeze(self):
         currentGame = registry.games.getCurrentGame()
