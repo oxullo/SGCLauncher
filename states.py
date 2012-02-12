@@ -107,11 +107,18 @@ class InfoState(engine.FadeGameState):
         self.__players.text = game['players'].upper()
 
     def __pollStatus(self):
-        if (self.__currentProcess and
-                self.__currentProcess.state in (process.Process.STATE_TERMINATED,
-                        process.Process.STATE_ERROR)):
+        if self.__currentProcess:
+
+            if self.__currentProcess.state == process.Process.STATE_RUNNING:
+                return
+            elif self.__currentProcess.state == process.Process.STATE_BADEXIT:
+                logging.error('%s crashed' % self.__currentProcess.game['name'])
+            elif self.__currentProcess.state == process.Process.STATE_CANTSTART:
+                logging.error('%s can\'t start' % self.__currentProcess.game['name'])
+            elif self.__currentProcess.state == process.Process.STATE_TERMINATED:
+                logging.info('%s exited' % self.__currentProcess.game['name'])
+
             process.restoreLauncherWindow()
-            logging.info('%s crashed or exited' % self.__currentProcess.game['name'])
             self.__currentProcess = None
             self.__onGameExited()
 

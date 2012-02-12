@@ -60,13 +60,14 @@ class Process(threading.Thread):
     STATE_INITIALIZING = 'STATE_INITIALIZING'
     STATE_RUNNING = 'STATE_RUNNING'
     STATE_TERMINATED = 'STATE_TERMINATED'
-    STATE_ERROR = 'STATE_ERROR'
+    STATE_CANTSTART = 'STATE_CANTSTART'
+    STATE_BADEXIT = 'STATE_BADEXIT'
 
     def __init__(self, game, *args, **kwargs):
         super(Process, self).__init__(*args, **kwargs)
         self.game = game
         self.env = None
-        self.popen = None
+        self.__popen = None
         self.state = self.STATE_INITIALIZING
 
         if not os.path.isdir(self.game['path']):
@@ -78,7 +79,7 @@ class Process(threading.Thread):
 
     def run(self):
         try:
-            self.popen = subprocess.Popen(
+            self.__popen = subprocess.Popen(
                     os.path.join(self.game['path'], self.game['exe']),
                     bufsize= -1,
                     cwd=self.game['path'],
@@ -89,17 +90,17 @@ class Process(threading.Thread):
                     env=self.env,
                     close_fds=False)
         except Exception, e:
-            self.state = self.STATE_ERROR
+            self.state = self.STATE_CANTSTART
             logging.error('Cannot start game %s: %s' % (self.game['shortname'], e))
             return
 
-        self.popen.stdin.close()
-        self.popen.stdout.close()
+        self.__popen.stdin.close()
+        self.__popen.stdout.close()
         self.state = self.STATE_RUNNING
 
-        while self.popen.poll() is None:
+        while self.__popen.poll() is None:
             try:
-                ln = self.popen.stderr.readline().strip()
+                ln = self.__popen.stderr.readline().strip()
             except Exception, e:
                 logging.info('Game launcher %s ended' % self.game['shortname'])
                 break
@@ -107,26 +108,33 @@ class Process(threading.Thread):
                 if ln:
                     print 'STDERR:', ln
 
-        self.state = self.STATE_TERMINATED
+        if self.__popen.returncode == 0:
+            self.state = self.STATE_TERMINATED
+        else:
+            self.state = self.STATE_BADEXIT
 
     def terminate(self):
-        handle = win32api.OpenProcess(win32con.PROCESS_TERMINATE, 0, self.popen.pid)
+        handle = win32api.OpenProcess(win32con.PROCESS_TERMINATE, 0, self.__popen.pid)
         win32api.TerminateProcess(handle, 0)
         win32api.CloseHandle(handle)
 
-
-def init():
-    global LIBAVG_WINDOW_HANDLE
-
+def getWindowsList():
     toplist = []
     winlist = []
     def enum_callback(hwnd, results):
         winlist.append((hwnd, win32gui.GetWindowText(hwnd)))
 
     win32gui.EnumWindows(enum_callback, toplist)
-    windows = [(hwnd, title) for hwnd, title in winlist if 'avg' in title.lower()]
+
+    return toplist, winlist
+
+def init():
+    global LIBAVG_WINDOW_HANDLE
+
+    toplist, winlist = getWindowsList()
+    windows = [hwnd for hwnd, title in winlist if 'avg' in title.lower()]
     # just grab the first window that matches
-    LIBAVG_WINDOW_HANDLE = windows[0][0]
+    LIBAVG_WINDOW_HANDLE = windows[0]
 
 def hideLauncherWindow():
     global LIBAVG_WINDOW_HANDLE
