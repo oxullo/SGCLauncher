@@ -107,8 +107,8 @@ class U0Relay(object):
                 for callback in self.__callbacks:
                     callback(i, states[i])
 
-                    if inject:
-                        self.__injectKey(i, states[i])
+                if inject:
+                    self.__injectKey(i, states[i])
 
     def __injectKey(self, index, state):
         vkey = 0x31 + index
