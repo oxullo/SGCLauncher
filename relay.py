@@ -30,17 +30,29 @@
 
 import serial
 import ctypes
+import logging
 
 import libavg
 
+u0 = None
 
-class U0Interface(object):
-    def __init__(self, port, cbStateChanged):
+class U0Relay(object):
+    def __init__(self, port):
         self.__serialObj = serial.Serial(port, timeout=0)
         self.__oldStates = [False] * 5
-        self.__cbStateChanged = cbStateChanged
+        self.__callbacks = []
+        self.__isRelayActive = False
 
         libavg.player.setOnFrameHandler(self.__poll)
+
+    def registerStateChangeCallback(self, callback):
+        self.__callbacks.append(callback)
+
+    def forceStatesUpdate(self):
+        return self.__notifyStates(self.__oldStates, [True] * 5, False)
+
+    def setRelayActive(self, active):
+        self.__isRelayActive = active
 
     def __poll(self):
         line = self.__serialObj.readline()
@@ -52,9 +64,12 @@ class U0Interface(object):
             except ValueError:
                 logging.debug('Garbage received from serial: %s' % str(list(line)))
             else:
-                self.__notify(mask)
+                self.__processMask(mask)
 
-    def __notify(self, mask):
+    def __processMask(self, mask):
+        '''
+        Bitmask integer to a list of states (13 -> [True, True, False, False, True]
+        '''
         states = []
 
         for i in xrange(6):
@@ -65,20 +80,27 @@ class U0Interface(object):
 
             states.append(thisState)
 
-        self.__onStatesUpdate(states)
+        self.__processStates(states)
 
-    def __onStatesUpdate(self, states):
+    def __processStates(self, states):
+        '''
+        Prepare a notification for the changed states only
+        '''
         changed = [s1 != s2 for s1, s2 in zip(states, self.__oldStates)]
 
-        for i in xrange(5):
-            if changed[i]:
-                self.__cbStateChanged(i, states[i])
-
+        self.__notifyStates(states, changed, self.__isRelayActive)
         self.__oldStates = states
 
+    def __notifyStates(self, states, which, inject):
+        for i in xrange(5):
+            if which[i]:
+                for callback in self.__callbacks:
+                    callback(i, states[i])
 
-class U0KeyTranslator(object):
-    def stateToKey(self, index, state):
+                    if inject:
+                        self.__injectKey(i, states[i])
+
+    def __injectKey(self, index, state):
         vkey = 0x31 + index
         scan = ctypes.windll.user32.MapVirtualKeyA(vkey + index, 0)
 
@@ -88,3 +110,8 @@ class U0KeyTranslator(object):
 
         logging.debug('Sent key 0x%x, eventf=%d' % (vkey, eventf))
 
+
+def init(port):
+    global u0
+
+    u0 = U0Relay(port)

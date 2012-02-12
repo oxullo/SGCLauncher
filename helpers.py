@@ -103,29 +103,35 @@ class VoteArbitrator(object):
         self.__mask = [False] * 5
         self.__updateVote()
 
-    def setVote(self, pad):
+    def setVoteByIndex(self, index):
         if self.__state != self.STATE_VOTE_OPEN:
             return
 
+        self.__mask[index] = True
+        self.__updateVote()
+
+    def unsetVoteByIndex(self, index):
+        if self.__state != self.STATE_VOTE_OPEN:
+            return
+
+        self.__mask[index] = False
+        self.__updateVote()
+
+    def setVoteByKey(self, pad):
         try:
             padIndex = int(pad) - 1
         except ValueError:
             logging.error('Error while attempting to convert pad %s to index' % pad)
         else:
-            self.__mask[padIndex] = True
-            self.__updateVote()
+            self.setVoteForIndex(padIndex)
 
-    def unsetVote(self, pad):
-        if self.__state != self.STATE_VOTE_OPEN:
-            return
-
+    def unsetVoteByKey(self, pad):
         try:
             padIndex = int(pad) - 1
         except ValueError:
             logging.error('Error while attempting to convert pad %s to index' % pad)
         else:
-            self.__mask[padIndex] = False
-            self.__updateVote()
+            self.unsetVoteForIndex(padIndex)
 
     def freeze(self):
         currentGame = registry.games.getCurrentGame()

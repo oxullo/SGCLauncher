@@ -37,6 +37,7 @@ import engine
 import helpers
 import registry
 import process
+import relay
 
 
 class InfoState(engine.FadeGameState):
@@ -170,6 +171,7 @@ class VoteState(engine.FadeGameState):
                     parent=self))
 
         self.__voteArbitrator = helpers.VoteArbitrator(self.__onVoteChanged)
+        relay.u0.registerStateChangeCallback(self.__onU0StateChanged)
 
     def setupGameInfo(self, game):
         self.__name.text = game['name'].upper()
@@ -178,11 +180,11 @@ class VoteState(engine.FadeGameState):
         if event.keystring == 'n':
             self.app.changeState('Info')
         elif event.keycode in range(49, 54):
-            self.__voteArbitrator.setVote(event.keystring)
+            self.__voteArbitrator.setVoteByKey(event.keystring)
 
     def _onKeyUp(self, event):
         if event.keycode in range(49, 54):
-            self.__voteArbitrator.unsetVote(event.keystring)
+            self.__voteArbitrator.unsetVoteByKey(event.keystring)
 
     def _preTransIn(self):
         self.setupGameInfo(registry.games.getCurrentGame())
@@ -190,6 +192,9 @@ class VoteState(engine.FadeGameState):
         self.__divFinalVote.x = 0
         self.__voteText.opacity = 1
         self.__voteTimer.start()
+
+    def _postTransIn(self):
+        relay.u0.forceStatesUpdate()
 
     def _preTransOut(self):
         registry.games.getNextGame()
@@ -207,3 +212,9 @@ class VoteState(engine.FadeGameState):
         avg.EaseInOutAnim(self.__divFinalVote, 'x', 400, 0, 300, 200, 300).start()
         self.__voteText.opacity = 0
         self.registerOneShotTimer(5000, lambda: self.app.changeState('Info'))
+
+    def __onU0StateChanged(self, index, state):
+        if state:
+            self.__voteArbitrator.setVoteByIndex(index)
+        else:
+            self.__voteArbitrator.unsetVoteByIndex(index)

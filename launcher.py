@@ -38,12 +38,14 @@ import engine
 import states
 import registry
 import process
+import relay
 
 
 class LauncherApp(engine.Application):
     def init(self):
         logging.getLogger().setLevel(logging.DEBUG)
         process.init()
+        relay.init('COM3')
 
         avg.ImageNode(href='background.png', parent=self._parentNode)
 
