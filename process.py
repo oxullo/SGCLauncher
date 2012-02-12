@@ -118,20 +118,32 @@ class Process(threading.Thread):
         win32api.TerminateProcess(handle, 0)
         win32api.CloseHandle(handle)
 
+    def hasFocus(self):
+        if self.state != self.STATE_RUNNING:
+            return False
+        else:
+            myWinList = []
+            allWinList = getWindowsList()
+            for hwnd, title in allWinList:
+                thrid, pid = win32process.GetWindowThreadProcessId(hwnd)
+                if pid == self.__popen.pid:
+                    myWinList.append(hwnd)
+
+            return win32gui.GetForegroundWindow() in myWinList
+
 def getWindowsList():
-    toplist = []
     winlist = []
-    def enum_callback(hwnd, results):
+    def enum_callback(hwnd, ignore):
         winlist.append((hwnd, win32gui.GetWindowText(hwnd)))
 
-    win32gui.EnumWindows(enum_callback, toplist)
+    win32gui.EnumWindows(enum_callback, None)
 
-    return toplist, winlist
+    return winlist
 
 def init():
     global LIBAVG_WINDOW_HANDLE
 
-    toplist, winlist = getWindowsList()
+    winlist = getWindowsList()
     windows = [hwnd for hwnd, title in winlist if 'avg' in title.lower()]
     # just grab the first window that matches
     LIBAVG_WINDOW_HANDLE = windows[0]

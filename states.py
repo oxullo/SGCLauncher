@@ -110,11 +110,12 @@ class InfoState(engine.FadeGameState):
         if self.__currentProcess:
 
             if self.__currentProcess.state == process.Process.STATE_RUNNING:
+                relay.u0.setRelayActive(self.__currentProcess.hasFocus())
                 return
             elif self.__currentProcess.state == process.Process.STATE_BADEXIT:
                 logging.error('%s crashed' % self.__currentProcess.game['name'])
             elif self.__currentProcess.state == process.Process.STATE_CANTSTART:
-                logging.error('%s can\'t start' % self.__currentProcess.game['name'])
+                logging.error('%s couldn\'t be started' % self.__currentProcess.game['name'])
             elif self.__currentProcess.state == process.Process.STATE_TERMINATED:
                 logging.info('%s exited' % self.__currentProcess.game['name'])
 
@@ -129,6 +130,7 @@ class InfoState(engine.FadeGameState):
         self.__currentProcess.start()
 
     def __onGameExited(self):
+        relay.u0.setRelayActive(False)
         self.app.changeState('Vote')
 
 
