@@ -40,40 +40,24 @@ import registry
 import process
 import relay
 
+DEBUG = False
 
 class LauncherApp(engine.Application):
     def init(self):
-        logging.getLogger().setLevel(logging.DEBUG)
+        if DEBUG:
+            logging.getLogger().setLevel(logging.DEBUG)
+
         process.init()
         relay.init('COM3')
 
         avg.ImageNode(href='background.png', parent=self._parentNode)
-
-#        self.propagateKeys = False
-#        self.u0Interface = U0Interface('COM3', self.__onU0StateChanged)
-#        self.u0KeyTranslator = U0KeyTranslator()
 
         self.registerState('Info', states.InfoState())
         self.registerState('Vote', states.VoteState())
 
         self.bootstrap('Info')
 
-    def startKeyFlow(self):
-        self.propagateKeys = True
-
-    def terminateApp(self):
-        self.__setFocusBack()
-
-        if self.proc is not None:
-            self.addLogLine('Terminating %s' % self.proc.game['name'])
-            self.proc.terminate()
-            self.proc = None
-    def __onU0StateChanged(self, index, state):
-        if self.propagateKeys:
-            self.u0KeyTranslator.stateToKey(index, state)
-
 if __name__ == '__main__':
     import os
 
-    os.environ['AVG_DEPLOY'] = '1'
-    LauncherApp.start(resolution=(1920, 1080))
+    LauncherApp.start()
