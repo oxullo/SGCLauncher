@@ -42,6 +42,7 @@ class U0Relay(object):
         self.__oldStates = [False] * 5
         self.__callbacks = []
         self.__isRelayActive = False
+        self.__readBuffer = ''
 
         libavg.player.setOnFrameHandler(self.__poll)
 
@@ -55,15 +56,25 @@ class U0Relay(object):
         self.__isRelayActive = active
 
     def __poll(self):
-        line = self.__serialObj.readline().strip()
-        if line:
-            try:
-                mask = int(line)
-                logging.debug('mask: %s' % mask)
-            except ValueError:
-                logging.debug('Garbage received from serial: %s' % str(list(line)))
-            else:
-                self.__processMask(mask)
+        while True:
+            ch = self.__serialObj.read()
+
+            if not ch:
+                return
+            elif ch == '\n':
+                self.__processBuffer()
+            elif ch != '\r':
+                self.__readBuffer += ch
+
+    def __processBuffer(self):
+        try:
+            mask = int(self.__readBuffer)
+            self.__readBuffer = ''
+            logging.debug('mask: %s' % mask)
+        except ValueError:
+            logging.debug('Garbage received from serial: %s' % str(list(line)))
+        else:
+            self.__processMask(mask)
 
     def __processMask(self, mask):
         '''
