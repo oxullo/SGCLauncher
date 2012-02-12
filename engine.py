@@ -277,13 +277,11 @@ class GameState(avg.DivNode):
 
     def _startTimers(self):
         for timer in self._timers:
-            print 'Starting timer', timer
             timer.start()
 
     def _killTimers(self):
         newTimersList = []
         for timer in self._timers:
-            print 'Killing timer', timer
             timer.kill()
             if not isinstance(timer, OneShotTimerSpecs):
                 newTimersList.append(timer)

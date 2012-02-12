@@ -46,38 +46,15 @@ class LauncherApp(engine.Application):
         process.init()
 
         avg.ImageNode(href='background.png', parent=self._parentNode)
-#        self.propagateKeys = False
-#
-#        self.proc = None
-#
+
 #        self.propagateKeys = False
 #        self.u0Interface = U0Interface('COM3', self.__onU0StateChanged)
 #        self.u0KeyTranslator = U0KeyTranslator()
-#
-#        self.__saveAvgWindowHandle()
 
         self.registerState('Info', states.InfoState())
         self.registerState('Vote', states.VoteState())
 
-#        libavg.player.setOnFrameHandler(self.__poll)
-
         self.bootstrap('Info')
-
-#    def onKeyDown(self, event):
-#        if event.keystring == 'b':
-#            # This is kinda relevant. Some games won't start if another
-#            # fullscreen app is stealing the context
-#            win32gui.ShowWindow(self.avgWindowHandle, win32con.SW_FORCEMINIMIZE)
-#
-#            game = self.gamesRegistry.getNextGame()
-#            self.addLogLine('Starting %s' % game['name'])
-#            self.proc = GameLauncher(game)
-#
-#            self.proc.start()
-#            libavg.player.setTimeout(game['keysdelay'] * 1000,
-#                    self.startKeyFlow)
-#        elif event.keystring == 'x':
-#            self.terminateApp()
 
     def startKeyFlow(self):
         self.propagateKeys = True
@@ -89,19 +66,6 @@ class LauncherApp(engine.Application):
             self.addLogLine('Terminating %s' % self.proc.game['name'])
             self.proc.terminate()
             self.proc = None
-
-    def __poll(self):
-        if self.proc and self.proc.state in (self.proc.STATE_TERMINATED, self.proc.STATE_ERROR):
-            self.__setFocusBack()
-            self.addLogLine('%s crashed or exited' % self.proc.game['name'])
-            self.proc = None
-
-    def __setFocusBack(self):
-        self.propagateKeys = False
-
-#        win32gui.SetForegroundWindow(avgwin[0])
-        win32gui.ShowWindow(self.avgWindowHandle, win32con.SW_MAXIMIZE)
-
     def __onU0StateChanged(self, index, state):
         if self.propagateKeys:
             self.u0KeyTranslator.stateToKey(index, state)
