@@ -108,9 +108,9 @@ class InfoState(engine.FadeGameState):
 
     def __pollStatus(self):
         if self.__currentProcess:
-
             if self.__currentProcess.state == process.Process.STATE_RUNNING:
-                relay.u0.setRelayActive(self.__currentProcess.hasFocus())
+                if registry.games.getCurrentGame()['keysdelay'] is None:
+                    relay.u0.setRelayActive(self.__currentProcess.hasFocus())
                 return
             elif self.__currentProcess.state == process.Process.STATE_BADEXIT:
                 logging.error('%s crashed' % self.__currentProcess.game['name'])
@@ -128,6 +128,12 @@ class InfoState(engine.FadeGameState):
         process.hideLauncherWindow()
         self.__currentProcess = process.Process(game)
         self.__currentProcess.start()
+
+        if game['keysdelay'] is not None:
+            logging.info('Preparing manual injection mode for game %s '
+                    '(delay=%d)' % (game['handle'], game['keysdelay']))
+            self.registerOneShotTimer(game['keysdelay'],
+                    lambda: relay.u0.setRelayActive(True))
 
     def __onGameExited(self):
         relay.u0.setRelayActive(False)

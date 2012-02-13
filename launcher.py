@@ -40,7 +40,7 @@ import registry
 import process
 import relay
 
-DEBUG = False
+DEBUG = True
 
 class LauncherApp(engine.Application):
     def init(self):

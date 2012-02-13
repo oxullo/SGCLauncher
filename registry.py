@@ -43,7 +43,6 @@ class MyConfigParser(ConfigParser.ConfigParser):
 
 class GamesRegistry(object):
     GAMES_SUBDIR = 'games'
-    DEFAULT_KEYSDELAY = 5
 
     def __init__(self, gamesConfig='games.ini'):
         config = MyConfigParser()
@@ -64,8 +63,10 @@ class GamesRegistry(object):
                 game['author'] = config.getDefaulted(section, 'author', None)
                 game['description'] = config.getDefaulted(section, 'description', None)
                 game['players'] = config.getDefaulted(section, 'players', None)
-                game['keysdelay'] = config.getDefaulted(section, 'keysdelay',
-                        self.DEFAULT_KEYSDELAY)
+                game['keysdelay'] = config.getDefaulted(section, 'keysdelay', None)
+
+                if game['keysdelay'] is not None:
+                    game['keysdelay'] = int(game['keysdelay'])
 
                 logging.debug('Configuring game %s' % section)
                 self.__games.append(game)
@@ -93,3 +94,4 @@ class GamesRegistry(object):
 
 
 games = GamesRegistry()
+
