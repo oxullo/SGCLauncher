@@ -135,6 +135,8 @@ class InfoState(engine.FadeGameState):
             self.registerOneShotTimer(game['keysdelay'],
                     lambda: relay.u0.setRelayActive(True))
 
+        self.registerOneShotTimer(5000, lambda: process.moveMouseOut())
+
     def __onGameExited(self):
         relay.u0.setRelayActive(False)
         self.app.changeState('Vote')

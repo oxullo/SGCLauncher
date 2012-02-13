@@ -152,3 +152,6 @@ def restoreLauncherWindow():
     global LIBAVG_WINDOW_HANDLE
     assert LIBAVG_WINDOW_HANDLE is not None
     win32gui.ShowWindow(LIBAVG_WINDOW_HANDLE, win32con.SW_MAXIMIZE)
+
+def moveMouseOut():
+    win32api.SetCursorPos((5000, 5000))
