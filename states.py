@@ -42,9 +42,9 @@ import relay
 
 class InfoState(engine.FadeGameState):
     def _init(self):
-        helpers.BlueText(text='NOW PLAYING',
+        helpers.BlueText(text='ABOUT TO PLAY',
                 fontsize=78,
-                pos=(600, 207),
+                pos=(580, 207),
                 parent=self)
 
         helpers.BlueText(text='AUTHOR/S',
@@ -64,7 +64,7 @@ class InfoState(engine.FadeGameState):
 
         self.__name = helpers.YellowText(
                 fontsize=107,
-                pos=(600, 273),
+                pos=(580, 273),
                 parent=self)
 
         self.__author = helpers.YellowText(
@@ -143,7 +143,7 @@ class InfoState(engine.FadeGameState):
 
 
 class VoteState(engine.FadeGameState):
-    VOTE_TEXTS = ['LIKED IT? STEP ON A PAD!', 'NOT SO MANY FANS',
+    VOTE_TEXTS = ['LIKED IT? STAND STILL ON A PAD!', 'NOT SO MANY FANS',
             'NO MORE FANS?', 'BLABLA',
             'FROB FRAB', 'OUTSTANDING!']
 
@@ -152,14 +152,14 @@ class VoteState(engine.FadeGameState):
                 pos=(1285, 461), parent=self)
         self.__divFinalVote = avg.DivNode(parent=self)
 
-        helpers.BlueText(text='NOW VOTING',
-                fontsize=78,
-                pos=(600, 207),
+        self.__nowVoting = helpers.BlueText(text='NOW VOTING',
+                fontsize=122,
+                pos=(442, 225),
                 parent=self)
 
         self.__name = helpers.YellowText(
-                fontsize=107,
-                pos=(600, 273),
+                fontsize=60,
+                pos=(1146, 250),
                 parent=self)
 
         self.__vote = helpers.YellowText(
@@ -189,6 +189,8 @@ class VoteState(engine.FadeGameState):
 
         self.__voteArbitrator = helpers.VoteArbitrator(self.__onVoteChanged)
         relay.u0.registerStateChangeCallback(self.__onU0StateChanged)
+        self.registerPeriodicTimer(200, self.__blinkNowVoting)
+        self.__shouldBlink = True
 
     def setupGameInfo(self, game):
         self.__name.text = game['name'].upper()
@@ -209,6 +211,7 @@ class VoteState(engine.FadeGameState):
         self.__divFinalVote.x = 0
         self.__voteText.opacity = 1
         self.__voteTimer.start()
+        self.__shouldBlink = True
 
     def _postTransIn(self):
         relay.u0.forceStatesUpdate()
@@ -216,6 +219,12 @@ class VoteState(engine.FadeGameState):
     def _preTransOut(self):
         registry.games.getNextGame()
         self.__voteTimer.reset()
+
+    def __blinkNowVoting(self):
+        if not self.__shouldBlink or self.__nowVoting.opacity == 0:
+            self.__nowVoting.opacity = 1
+        else:
+            self.__nowVoting.opacity = 0
 
     def __onVoteChanged(self, votes, mask):
         for index, state in enumerate(mask):
@@ -234,6 +243,7 @@ class VoteState(engine.FadeGameState):
         avg.EaseInOutAnim(self.__divFinalVote, 'x', 400, 0, 300, 200, 300).start()
         self.__voteText.opacity = 0
         self.registerOneShotTimer(5000, lambda: self.app.changeState('Info'))
+        self.__shouldBlink = False
 
     def __onU0StateChanged(self, index, state):
         if state:
