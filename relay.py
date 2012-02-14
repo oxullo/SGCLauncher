@@ -63,8 +63,7 @@ class U0RelayBase(object):
             self._readBuffer = ''
             logging.debug('mask: %s' % mask)
         except ValueError:
-            logging.warning('Garbage received from serial'
-                    ': %s' % str(list(self._readBuffer)))
+            logging.warning('Bad states data: %s' % str(list(self._readBuffer)))
             self._readBuffer = ''
         else:
             self._processMask(mask)
@@ -153,15 +152,18 @@ class U0RelayTCP(U0RelayBase):
                 ch = self.__socket.recv(1)
             except socket.error, e:
                 if e.errno != errno.EWOULDBLOCK:
-                    print e
+                    logging.warning('Connection to U0Net lost')
                     self.__socket.close()
                     self.__state = self.STATE_CONNECTING
 
                 return
 
             if ch == '\n':
-                self._processBuffer()
-            elif ch != '\r':
+                if self._readBuffer == 'K':
+                    self._readBuffer = ''
+                else:
+                    self._processBuffer()
+            elif ch not in ('\r', '\x00'):
                 self._readBuffer += ch
 
     def __connect(self):
