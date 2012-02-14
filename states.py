@@ -149,7 +149,7 @@ class VoteState(engine.FadeGameState):
 
     def _init(self):
         self.__voteTimer = helpers.VoteTimer(self.__onTimerElapsed,
-                pos=(1285, 461), parent=self)
+                pos=(1285, 431), parent=self)
         self.__divFinalVote = avg.DivNode(parent=self)
 
         self.__nowVoting = helpers.BlueText(text='NOW VOTING',
