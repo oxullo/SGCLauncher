@@ -31,53 +31,45 @@
 import serial
 import ctypes
 import logging
+import socket
+import time
+import errno
 
 import libavg
 
 u0 = None
 
-class U0Relay(object):
-    def __init__(self, port):
-        self.__serialObj = serial.Serial(port, timeout=0)
-        self.__oldStates = [False] * 5
-        self.__callbacks = []
-        self.__isRelayActive = False
-        self.__readBuffer = ''
+class U0RelayBase(object):
+    def __init__(self):
+        self._oldStates = [False] * 5
+        self._callbacks = []
+        self._isRelayActive = False
+        self._readBuffer = ''
 
-        libavg.player.setOnFrameHandler(self.__poll)
+        libavg.player.setOnFrameHandler(self._poll)
 
     def registerStateChangeCallback(self, callback):
-        self.__callbacks.append(callback)
+        self._callbacks.append(callback)
 
     def forceStatesUpdate(self):
-        return self.__notifyStates(self.__oldStates, [True] * 5, False)
+        return self._notifyStates(self._oldStates, [True] * 5, False)
 
     def setRelayActive(self, active):
-        self.__isRelayActive = active
+        self._isRelayActive = active
 
-    def __poll(self):
-        while True:
-            ch = self.__serialObj.read()
-
-            if not ch:
-                return
-            elif ch == '\n':
-                self.__processBuffer()
-            elif ch != '\r':
-                self.__readBuffer += ch
-
-    def __processBuffer(self):
+    def _processBuffer(self):
         try:
-            mask = int(self.__readBuffer)
-            self.__readBuffer = ''
+            mask = int(self._readBuffer)
+            self._readBuffer = ''
             logging.debug('mask: %s' % mask)
         except ValueError:
             logging.warning('Garbage received from serial'
-                    ': %s' % str(list(self.__readBuffer)))
+                    ': %s' % str(list(self._readBuffer)))
+            self._readBuffer = ''
         else:
-            self.__processMask(mask)
+            self._processMask(mask)
 
-    def __processMask(self, mask):
+    def _processMask(self, mask):
         '''
         Bitmask integer to a list of states (13 -> [True, True, False, False, True]
         '''
@@ -91,27 +83,27 @@ class U0Relay(object):
 
             states.append(thisState)
 
-        self.__processStates(states)
+        self._processStates(states)
 
-    def __processStates(self, states):
+    def _processStates(self, states):
         '''
         Prepare a notification for the changed states only
         '''
-        changed = [s1 != s2 for s1, s2 in zip(states, self.__oldStates)]
+        changed = [s1 != s2 for s1, s2 in zip(states, self._oldStates)]
 
-        self.__notifyStates(states, changed, self.__isRelayActive)
-        self.__oldStates = states
+        self._notifyStates(states, changed, self._isRelayActive)
+        self._oldStates = states
 
-    def __notifyStates(self, states, which, inject):
+    def _notifyStates(self, states, which, inject):
         for i in xrange(5):
             if which[i]:
-                for callback in self.__callbacks:
+                for callback in self._callbacks:
                     callback(i, states[i])
 
                 if inject:
-                    self.__injectKey(i, states[i])
+                    self._injectKey(i, states[i])
 
-    def __injectKey(self, index, state):
+    def _injectKey(self, index, state):
         vkey = 0x31 + index
         scan = ctypes.windll.user32.MapVirtualKeyA(vkey + index, 0)
 
@@ -122,7 +114,79 @@ class U0Relay(object):
         logging.debug('Sent key 0x%x, eventf=%d' % (vkey, eventf))
 
 
-def init(port):
+class U0RelaySerial(U0RelayBase):
+    def __init__(self, port):
+        super(U0RelaySerial, self).__init__()
+        self.__serialObj = serial.Serial(port, timeout=0)
+
+    def _poll(self):
+        while True:
+            ch = self.__serialObj.read()
+
+            if not ch:
+                return
+            elif ch == '\n':
+                self._processBuffer()
+            elif ch != '\r':
+                self._readBuffer += ch
+
+
+class U0RelayTCP(U0RelayBase):
+    U0NET_PORT = 10000
+    RECONNECT_DELAY = 5
+
+    STATE_CONNECTING = 'STATE_CONNECTING'
+    STATE_CONNECTED = 'STATE_CONNECTED'
+
+    def __init__(self, host):
+        super(U0RelayTCP, self).__init__()
+        self.__host = host
+        self.__state = self.STATE_CONNECTING
+        self.__nextConnectionAttempt = 0
+        self.__checkConnectionState()
+
+    def _poll(self):
+        self.__checkConnectionState()
+
+        if self.__state == self.STATE_CONNECTED:
+            try:
+                ch = self.__socket.recv(1)
+            except socket.error, e:
+                if e.errno != errno.EWOULDBLOCK:
+                    print e
+                    self.__socket.close()
+                    self.__state = self.STATE_CONNECTING
+
+                return
+
+            if ch == '\n':
+                self._processBuffer()
+            elif ch != '\r':
+                self._readBuffer += ch
+
+    def __connect(self):
+        try:
+            self.__socket = socket.create_connection((self.__host, self.U0NET_PORT), 0.5)
+        except Exception, e:
+            logging.error('U0RelayTCP: cannot connect (%s)' % str(e))
+            self.__nextConnectionAttempt = time.time() + self.RECONNECT_DELAY
+        else:
+            logging.info('U0RelayTCP connected to %s' % self.__host)
+            self.__state = self.STATE_CONNECTED
+            self.__socket.setblocking(0)
+
+    def __checkConnectionState(self):
+        if (self.__state == self.STATE_CONNECTING and
+                time.time() >= self.__nextConnectionAttempt):
+            self.__connect()
+
+
+def initSerial(port):
     global u0
 
-    u0 = U0Relay(port)
+    u0 = U0RelaySerial(port)
+
+def initNet(host):
+    global u0
+
+    u0 = U0RelayTCP(host)
