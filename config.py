@@ -28,40 +28,32 @@
 # authors and should not be interpreted as representing official policies, either 
 # expressed or implied, of OXullo Intersecans.
 
-import logging
-
-import libavg
-from libavg import avg
-libavg.player = avg.Player.get()
-
-import engine
-import states
-import registry
-import process
-import relay
-import config
+import ConfigParser
 
 
-class LauncherApp(engine.Application):
-    def init(self):
-        process.init()
-        relay.initNet(config.data.u0addr)
-
-        avg.ImageNode(href='background.png', parent=self._parentNode)
-
-        self.registerState('Info', states.InfoState())
-        self.registerState('Vote', states.VoteState())
-
-        self.bootstrap('Info')
+class ConfigData(object):
+    pass
 
 
-if __name__ == '__main__':
-    config.init()
+class MyConfigParser(ConfigParser.ConfigParser):
+    def getDefaulted(self, section, option, default):
+        if self.has_option(section, option):
+            return self.get(section, option)
+        else:
+            return default
 
-    if config.data.debug:
-        logging.getLogger().setLevel(logging.DEBUG)
-    else:
-        logging.getLogger().setLevel(logging.INFO)
 
-    engine.ApplicationStarter(LauncherApp, resolution=(1920, 1080),
-            fullscreen=config.data.fullscreen)
+def init():
+    global data
+
+    data = ConfigData()
+
+    cfg = MyConfigParser()
+    cfg.read('config.ini')
+
+    data.debug = cfg.getboolean('SGC', 'debug')
+    data.fullscreen = cfg.getboolean('SGC', 'fullscreen')
+    data.u0addr = cfg.get('SGC', 'u0addr')
+    data.votetime = cfg.getfloat('SGC', 'votetime')
+    data.votehurryup = cfg.getfloat('SGC', 'votehurryup')
+    data.votefile = cfg.get('SGC', 'votefile')

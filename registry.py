@@ -30,40 +30,32 @@
 
 import os
 import logging
-import ConfigParser
-
-
-class MyConfigParser(ConfigParser.ConfigParser):
-    def getDefaulted(self, section, option, default):
-        if self.has_option(section, option):
-            return self.get(section, option)
-        else:
-            return default
+import config
 
 
 class GamesRegistry(object):
     GAMES_SUBDIR = 'games'
 
     def __init__(self, gamesConfig='games.ini'):
-        config = MyConfigParser()
-        config.read(gamesConfig)
+        cfg = config.MyConfigParser()
+        cfg.read(gamesConfig)
 
         basePath = os.path.join(os.path.dirname(os.path.abspath(__file__)),
                 self.GAMES_SUBDIR)
 
         self.__games = []
-        for section in config.sections():
-            if config.getboolean(section, 'active'):
+        for section in cfg.sections():
+            if cfg.getboolean(section, 'active'):
                 game = dict()
 
                 game['handle'] = section
-                game['path'] = os.path.join(basePath, config.get(section, 'path'))
-                game['exe'] = config.get(section, 'exe')
-                game['name'] = config.getDefaulted(section, 'name', None)
-                game['author'] = config.getDefaulted(section, 'author', None)
-                game['description'] = config.getDefaulted(section, 'description', None)
-                game['players'] = config.getDefaulted(section, 'players', None)
-                game['keysdelay'] = config.getDefaulted(section, 'keysdelay', None)
+                game['path'] = os.path.join(basePath, cfg.get(section, 'path'))
+                game['exe'] = cfg.get(section, 'exe')
+                game['name'] = cfg.getDefaulted(section, 'name', None)
+                game['author'] = cfg.getDefaulted(section, 'author', None)
+                game['description'] = cfg.getDefaulted(section, 'description', None)
+                game['players'] = cfg.getDefaulted(section, 'players', None)
+                game['keysdelay'] = cfg.getDefaulted(section, 'keysdelay', None)
 
                 if game['keysdelay'] is not None:
                     game['keysdelay'] = int(game['keysdelay'])

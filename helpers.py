@@ -36,6 +36,7 @@ import libavg
 from libavg import avg
 
 import registry
+import config
 
 
 class SGCText(avg.WordsNode):
@@ -60,6 +61,7 @@ class YellowText(SGCText):
 class HurryupIcon(avg.ImageNode):
     STATE_ACTIVE = 'STATE_ACTIVE'
     STATE_INACTIVE = 'STATE_INACTIVE'
+
     def __init__(self, **kwargs):
         kwargs['href'] = 'hurryup.png'
         super(HurryupIcon, self).__init__(**kwargs)
@@ -90,8 +92,6 @@ class HurryupIcon(avg.ImageNode):
 class VoteArbitrator(object):
     STATE_VOTE_OPEN = 'STATE_VOTE_OPEN'
     STATE_VOTE_CLOSED = 'STATE_VOTE_CLOSED'
-
-    VOTE_FILE = 'votes.csv'
 
     def __init__(self, voteChangedCb):
         self.__voteChangedCb = voteChangedCb
@@ -138,7 +138,7 @@ class VoteArbitrator(object):
 
         logging.info('Final vote for %s: %d' % (currentGame['name'], self.__currentVote))
 
-        f = open(self.VOTE_FILE, 'a')
+        f = open(config.data.votefile, 'a')
         print >> f, '%f\t%s\t%s\t%d\t%s' % (time.time(), datetime.datetime.now(),
                 currentGame['handle'], self.__currentVote, repr(self.__mask))
         f.close()
@@ -154,9 +154,6 @@ class VoteArbitrator(object):
 
 
 class VoteTimer(avg.DivNode):
-    VOTE_TIME = 5
-    HURRYUP_AFTER = 3
-
     def __init__(self, timerElapsedCb, **kwargs):
         super(VoteTimer, self).__init__(**kwargs)
 
@@ -180,7 +177,7 @@ class VoteTimer(avg.DivNode):
 
     def start(self):
         self.opacity = 1
-        self.__timeLeft = self.VOTE_TIME
+        self.__timeLeft = config.data.votetime
         self.__tmrClock = libavg.player.setInterval(1000, self.__tick)
         self.__syncTimeLeft()
 
@@ -198,7 +195,7 @@ class VoteTimer(avg.DivNode):
 
     def __syncTimeLeft(self):
         self.__voteTime.text = '%ds' % self.__timeLeft
-        if self.__timeLeft > self.HURRYUP_AFTER:
+        if self.__timeLeft > config.data.votehurryup:
             self.__hurryup.deactivate()
         else:
             self.__hurryup.activate()
