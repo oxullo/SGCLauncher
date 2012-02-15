@@ -50,7 +50,8 @@ class LauncherApp(engine.Application):
             logging.getLogger().setLevel(logging.INFO)
 
         process.init()
-        relay.init('COM3')
+#        relay.initSerial('COM3')
+        relay.initNet('192.168.112.49')
 
         avg.ImageNode(href='background.png', parent=self._parentNode)
 
@@ -60,6 +61,4 @@ class LauncherApp(engine.Application):
         self.bootstrap('Info')
 
 if __name__ == '__main__':
-    import os
-
-    LauncherApp.start()
+    engine.ApplicationStarter(LauncherApp, resolution=(1920, 1080))

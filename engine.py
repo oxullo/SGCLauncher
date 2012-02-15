@@ -35,7 +35,7 @@ import pickle
 import random
 import atexit
 import libavg
-from libavg import avg, Point2D, gameapp
+from libavg import avg, Point2D
 
 g_Player = avg.Player.get()
 g_Log = avg.Logger.get()
@@ -362,7 +362,60 @@ class FadeGameState(TransitionGameState):
                 self._bgTrack.stop).start()
 
 
-class Application(gameapp.GameApp):
+class ApplicationStarter(libavg.AVGAppStarter):
+    def __init__(self, appClass, resolution, fullscreen=True):
+        self._AppClass = appClass
+        resolution = Point2D(resolution)
+
+        width = int(resolution.x)
+        height = int(resolution.y)
+
+        # dynamic avg creation in order to set resolution
+        libavg.player.loadString("""
+<?xml version="1.0"?>
+<!DOCTYPE avg SYSTEM "../../libavg/doc/avg.dtd">
+<avg width="%(width)u" height="%(height)u">
+</avg>""" % {
+            'width': width,
+            'height': height,
+            })
+        rootNode = libavg.player.getRootNode()
+
+        self._appNode = libavg.player.createNode('div', {
+            'opacity': 0,
+            'sensitive': False})
+        # the app should know the size of its "root" node:
+        self._appNode.size = rootNode.size
+        rootNode.appendChild(self._appNode)
+
+        libavg.player.showCursor(False)
+
+        screenResolution = libavg.player.getScreenResolution()
+
+        libavg.player.setResolution(
+                fullscreen,
+                int(screenResolution.x), int(screenResolution.y),
+                0 # color depth
+                )
+
+        rootNode.setEventHandler(avg.KEYDOWN, avg.NONE, self.__onKeyDown)
+        rootNode.setEventHandler(avg.KEYUP, avg.NONE, self.__onKeyUp)
+
+        self._onBeforePlay()
+        libavg.player.setTimeout(0, self._onStart)
+        self._appInstance = self._AppClass(self._appNode)
+        self._appInstance.setStarter(self)
+        libavg.player.play()
+        self._appInstance.exit()
+
+    def __onKeyDown(self, event):
+        return self._activeApp.onKeyDown(event)
+
+    def __onKeyUp(self, event):
+        return self._activeApp.onKeyUp(event)
+
+
+class Application(libavg.AVGApp):
     def __init__(self, *args, **kwargs):
         self.__registeredStates = {}
         self.__currentState = None
@@ -371,6 +424,11 @@ class Application(gameapp.GameApp):
         self.__elapsedTime = 0
         self.__pointer = None
         super(Application, self).__init__(*args, **kwargs)
+
+        pkgpath = self._getPackagePath()
+        if pkgpath is not None:
+            avg.WordsNode.addFontDir(libavg.AVGAppUtil.getMediaDir(pkgpath, 'fonts'))
+            self._parentNode.mediadir = libavg.AVGAppUtil.getMediaDir(pkgpath)
 
 
     def setupPointer(self, instance):

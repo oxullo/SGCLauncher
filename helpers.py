@@ -71,7 +71,7 @@ class HurryupIcon(avg.ImageNode):
         if self.__state == self.STATE_INACTIVE:
             self.opacity = 1
             self.__state = self.STATE_ACTIVE
-            self.__tmrAnim = libavg.player.setInterval(200, self.__animate)
+            self.__tmrAnim = libavg.player.setInterval(100, self.__animate)
 
     def deactivate(self):
         if self.__state == self.STATE_ACTIVE:
