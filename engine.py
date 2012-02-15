@@ -213,7 +213,8 @@ class GameState(avg.DivNode):
 
     def _startTimers(self):
         for timer in self._timers:
-            timer.start()
+            if isinstance(timer, PeriodicTimerSpecs):
+                timer.start()
 
     def _killTimers(self):
         newTimersList = []

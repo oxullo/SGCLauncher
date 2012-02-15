@@ -38,6 +38,7 @@ import helpers
 import registry
 import process
 import relay
+import config
 
 
 class InfoState(engine.FadeGameState):
@@ -89,6 +90,9 @@ class InfoState(engine.FadeGameState):
 
     def _preTransIn(self):
         self.setupGameInfo(registry.games.getCurrentGame())
+        if config.data.autoskip:
+            self.registerOneShotTimer(config.data.infostateduration * 1000,
+                    self.__runGame)
 
     def _onKeyDown(self, event):
         if event.keystring == 'n':
@@ -136,6 +140,12 @@ class InfoState(engine.FadeGameState):
                     lambda: relay.u0.setRelayActive(True))
 
         self.registerOneShotTimer(5000, lambda: process.moveMouseOut())
+        if config.data.autoskip:
+            self.registerOneShotTimer(config.data.defaultgameduration * 1000,
+                    self.__terminateGame)
+
+    def __terminateGame(self):
+        self.__currentProcess.terminate()
 
     def __onGameExited(self):
         relay.u0.setRelayActive(False)
@@ -242,7 +252,9 @@ class VoteState(engine.FadeGameState):
         self.__voteArbitrator.freeze()
         avg.EaseInOutAnim(self.__divFinalVote, 'x', 400, 0, 300, 200, 300).start()
         self.__voteText.opacity = 0
-        self.registerOneShotTimer(5000, lambda: self.app.changeState('Info'))
+        if config.data.autoskip:
+            self.registerOneShotTimer(config.data.votestateduration * 1000,
+                    lambda: self.app.changeState('Info'))
         self.__shouldBlink = False
 
     def __onU0StateChanged(self, index, state):
