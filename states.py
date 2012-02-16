@@ -117,11 +117,16 @@ class InfoState(engine.FadeGameState):
                     relay.u0.setRelayActive(self.__currentProcess.hasFocus())
                 return
             elif self.__currentProcess.state == process.Process.STATE_BADEXIT:
-                logging.error('%s crashed' % self.__currentProcess.game['name'])
+                logging.error('%s crashed' % self.__currentProcess.game['handle'])
             elif self.__currentProcess.state == process.Process.STATE_CANTSTART:
-                logging.error('%s couldn\'t be started' % self.__currentProcess.game['name'])
+                logging.error('%s couldn\'t be '
+                        'started' % self.__currentProcess.game['handle'])
             elif self.__currentProcess.state == process.Process.STATE_TERMINATED:
-                logging.info('%s exited' % self.__currentProcess.game['name'])
+                logging.info('%s exited' % self.__currentProcess.game['handle'])
+            elif self.__currentProcess.state == process.Process.STATE_INITIALIZING:
+                logging.debug('%s slow to start, '
+                        'waiting' % self.__currentProcess.game['handle'])
+                return
 
             process.restoreLauncherWindow()
             self.__currentProcess = None
