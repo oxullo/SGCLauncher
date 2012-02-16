@@ -171,10 +171,6 @@ class InfoState(engine.FadeGameState):
 
 
 class VoteState(engine.FadeGameState):
-    VOTE_TEXTS = ['LIKED IT? STAND STILL ON A PAD!', 'NOT SO MANY FANS',
-            'NO MORE FANS?', 'BLABLA',
-            'FROB FRAB', 'OUTSTANDING!']
-
     def _init(self):
         self.__voteTimer = helpers.VoteTimer(self.__onTimerElapsed,
                 pos=(1285, 431), parent=self)
@@ -195,7 +191,7 @@ class VoteState(engine.FadeGameState):
                 pos=(717, 434),
                 parent=self.__divFinalVote)
 
-        self.__voteText = helpers.YellowText(
+        self.__voteText = helpers.YellowText(text='LIKED IT? STAND STILL ON A PAD!',
                 fontsize=57,
                 pos=(733, 685),
                 parent=self.__divFinalVote)
@@ -264,7 +260,6 @@ class VoteState(engine.FadeGameState):
             self.__voteLabel.text = 'VOTES'
 
         self.__vote.text = str(votes)
-        self.__voteText.text = self.VOTE_TEXTS[votes]
 
     def __onTimerElapsed(self):
         self.__voteArbitrator.freeze()
