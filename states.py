@@ -250,7 +250,6 @@ class VoteState(engine.FadeGameState):
         relay.u0.forceStatesUpdate()
 
     def _preTransOut(self):
-        self.__u0FeedActive = False
         registry.games.getNextGame()
         self.__voteTimer.reset()
 
@@ -272,6 +271,7 @@ class VoteState(engine.FadeGameState):
         self.__vote.text = str(votes)
 
     def __onTimerElapsed(self):
+        self.__u0FeedActive = False
         self.__voteArbitrator.freeze()
         avg.EaseInOutAnim(self.__divFinalVote, 'x', 400, 0, 300, 200, 300).start()
         self.__voteText.opacity = 0
