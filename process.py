@@ -42,20 +42,6 @@ import win32process
 LIBAVG_WINDOW_HANDLE = None
 
 
-TH32CS_SNAPPROCESS = 0x00000002
-class PROCESSENTRY32(ctypes.Structure):
-    _fields_ = [("dwSize", ctypes.c_ulong),
-        ("cntUsage", ctypes.c_ulong),
-        ("th32ProcessID", ctypes.c_ulong),
-        ("th32DefaultHeapID", ctypes.c_ulong),
-        ("th32ModuleID", ctypes.c_ulong),
-        ("cntThreads", ctypes.c_ulong),
-        ("th32ParentProcessID", ctypes.c_ulong),
-        ("pcPriClassBase", ctypes.c_ulong),
-        ("dwFlags", ctypes.c_ulong),
-        ("szExeFile", ctypes.c_char * 260)]
-
-
 class Process(threading.Thread):
     STATE_INITIALIZING = 'STATE_INITIALIZING'
     STATE_RUNNING = 'STATE_RUNNING'
@@ -78,6 +64,7 @@ class Process(threading.Thread):
                     os.path.join(self.game['path'], self.game['exe']), self.game))
 
     def run(self):
+        logging.info('Starting %s' % self.game['handle'])
         try:
             self.__popen = subprocess.Popen(
                     os.path.join(self.game['path'], self.game['exe']),
@@ -91,7 +78,7 @@ class Process(threading.Thread):
                     close_fds=False)
         except Exception, e:
             self.state = self.STATE_CANTSTART
-            logging.error('Cannot start game %s: %s' % (self.game['shortname'], e))
+            logging.error('Cannot start game %s: %s' % (self.game['handle'], e))
             return
 
         self.__popen.stdin.close()
@@ -102,7 +89,7 @@ class Process(threading.Thread):
             try:
                 ln = self.__popen.stderr.readline().strip()
             except Exception, e:
-                logging.info('Game launcher %s ended' % self.game['shortname'])
+                logging.info('Game launcher %s ended' % self.game['handle'])
                 break
             else:
                 if ln:
@@ -114,9 +101,14 @@ class Process(threading.Thread):
             self.state = self.STATE_BADEXIT
 
     def terminate(self):
-        handle = win32api.OpenProcess(win32con.PROCESS_TERMINATE, 0, self.__popen.pid)
-        win32api.TerminateProcess(handle, 0)
-        win32api.CloseHandle(handle)
+        logging.debug('Terminating game %s (%s)' % (self.game['handle'],
+                self.game['killexe']))
+
+        for pid in getAllPidsByExe(self.game['killexe']):
+            logging.debug('(%s) killing pid %d' % (self.game['handle'], pid))
+            handle = win32api.OpenProcess(win32con.PROCESS_TERMINATE, 0, pid)
+            win32api.TerminateProcess(handle, 0)
+            win32api.CloseHandle(handle)
 
     def hasFocus(self):
         if self.state != self.STATE_RUNNING:
@@ -125,6 +117,44 @@ class Process(threading.Thread):
             fgHwnd = win32gui.GetForegroundWindow()
             thrid, pid = win32process.GetWindowThreadProcessId(fgHwnd)
             return pid == self.__popen.pid
+
+
+def getAllPidsByExe(exe):
+    TH32CS_SNAPPROCESS = 0x00000002
+
+    class PROCESSENTRY32(ctypes.Structure):
+        _fields_ = [('dwSize', ctypes.c_ulong),
+            ('cntUsage', ctypes.c_ulong),
+            ('th32ProcessID', ctypes.c_ulong),
+            ('th32DefaultHeapID', ctypes.c_ulong),
+            ('th32ModuleID', ctypes.c_ulong),
+            ('cntThreads', ctypes.c_ulong),
+            ('th32ParentProcessID', ctypes.c_ulong),
+            ('pcPriClassBase', ctypes.c_ulong),
+            ('dwFlags', ctypes.c_ulong),
+            ('szExeFile', ctypes.c_char * 260)]
+
+    pids = []
+    CreateToolhelp32Snapshot = ctypes.windll.kernel32.CreateToolhelp32Snapshot
+    Process32First = ctypes.windll.kernel32.Process32First
+    Process32Next = ctypes.windll.kernel32.Process32Next
+    CloseHandle = ctypes.windll.kernel32.CloseHandle
+    hProcessSnap = CreateToolhelp32Snapshot(TH32CS_SNAPPROCESS, 0)
+    pe32 = PROCESSENTRY32()
+    pe32.dwSize = ctypes.sizeof(PROCESSENTRY32)
+
+    if Process32First(hProcessSnap, ctypes.byref(pe32)) == win32con.FALSE:
+         raise RuntimeError, 'Cannot enumerate processes'
+
+    while True:
+        if pe32.szExeFile.upper() == exe.upper():
+            pids.append(pe32.th32ProcessID)
+        if Process32Next(hProcessSnap, ctypes.byref(pe32)) == win32con.FALSE:
+            break
+
+    CloseHandle(hProcessSnap)
+
+    return pids
 
 def getWindowsList():
     winlist = []

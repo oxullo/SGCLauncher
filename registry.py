@@ -56,6 +56,7 @@ class GamesRegistry(object):
                 game['description'] = cfg.getDefaulted(section, 'description', None)
                 game['players'] = cfg.getDefaulted(section, 'players', None)
                 game['keysdelay'] = cfg.getDefaulted(section, 'keysdelay', None)
+                game['killexe'] = cfg.getDefaulted(section, 'killexe', game['exe'])
 
                 if game['keysdelay'] is not None:
                     game['keysdelay'] = int(game['keysdelay'])
