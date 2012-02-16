@@ -215,6 +215,8 @@ class VoteState(engine.FadeGameState):
                     opacity=0,
                     parent=self))
 
+        engine.SoundManager.allocate('bleep.mp3')
+
         self.__voteArbitrator = helpers.VoteArbitrator(self.__onVoteChanged)
         relay.u0.registerStateChangeCallback(self.__onU0StateChanged)
         self.registerPeriodicTimer(200, self.__blinkNowVoting)
@@ -277,6 +279,7 @@ class VoteState(engine.FadeGameState):
 
     def __onU0StateChanged(self, index, state):
         if state:
+            engine.SoundManager.play('bleep.mp3')
             self.__voteArbitrator.setVoteByIndex(index)
         else:
             self.__voteArbitrator.unsetVoteByIndex(index)
