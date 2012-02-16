@@ -49,6 +49,8 @@ class LauncherApp(engine.Application):
 
         avg.ImageNode(href='background.png', parent=self._parentNode)
 
+        engine.SoundManager.init(self._parentNode)
+
         self.registerState('Info', states.InfoState())
         self.registerState('Vote', states.VoteState())
 

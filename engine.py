@@ -163,8 +163,9 @@ class GameState(avg.DivNode):
 
     def registerBgTrack(self, fileName, maxVolume=1):
         self._bgTrack = SoundManager.getSample(fileName, loop=True)
-        self._bgTrack.volume = maxVolume
+        self._bgTrack.volume = 0
         self._maxBgTrackVolume = maxVolume
+        self._bgTrack.play()
 
     def registerPeriodicTimer(self, period, callback):
         return PeriodicTimerSpecs(period, callback)
@@ -304,15 +305,14 @@ class FadeGameState(TransitionGameState):
         avg.fadeOut(self, self.TRANS_DURATION, postCb)
 
     def _doBgTrackTransIn(self):
-        self._bgTrack.volume = 0
-        self._bgTrack.play()
-        avg.LinearAnim(self._bgTrack, 'volume', self.TRANS_DURATION, 0,
-                self._maxBgTrackVolume).start()
+        if self._bgTrack.volume == 0:
+            avg.LinearAnim(self._bgTrack, 'volume', self.TRANS_DURATION,
+                    0, self._maxBgTrackVolume).start()
 
     def _doBgTrackTransOut(self):
-        avg.LinearAnim(self._bgTrack, 'volume', self.TRANS_DURATION,
-                self._maxBgTrackVolume, 0, False, None,
-                self._bgTrack.stop).start()
+        if self._bgTrack.volume > 0:
+            avg.LinearAnim(self._bgTrack, 'volume', self.TRANS_DURATION,
+                    self._maxBgTrackVolume, 0).start()
 
 
 class ApplicationStarter(libavg.AVGAppStarter):

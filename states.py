@@ -88,6 +88,7 @@ class InfoState(engine.FadeGameState):
         self.__currentProcess = None
         self.__autostartTimer = None
         self.registerPeriodicTimer(100, self.__pollStatus)
+        self.registerBgTrack('01.mp3', 0.3)
 
     def _preTransIn(self):
         self.setupGameInfo(registry.games.getCurrentGame())
@@ -135,6 +136,8 @@ class InfoState(engine.FadeGameState):
             self.__onGameExited()
 
     def __runGame(self):
+        self._doBgTrackTransOut()
+
         if config.data.autoskip and not self.__autostartTimer.elapsed:
             self.__autostartTimer.kill()
 
@@ -155,7 +158,8 @@ class InfoState(engine.FadeGameState):
                     self.__terminateGame)
 
     def __terminateGame(self):
-        self.__currentProcess.terminate()
+        if self.__currentProcess is not None:
+            self.__currentProcess.terminate()
 
     def __loadNextGame(self):
         self.setupGameInfo(registry.games.getNextGame())
@@ -215,6 +219,7 @@ class VoteState(engine.FadeGameState):
         relay.u0.registerStateChangeCallback(self.__onU0StateChanged)
         self.registerPeriodicTimer(200, self.__blinkNowVoting)
         self.__shouldBlink = True
+        self.registerBgTrack('02.mp3', 0.3)
 
     def setupGameInfo(self, game):
         self.__name.text = game['name'].upper()
