@@ -95,11 +95,22 @@ class SoundManager(object):
         cls.objects[fileName].append(mySound)
 
 
-class PeriodicTimerSpecs(object):
+class PeriodicTimerBase(object):
+    def __init__(self):
+        self.instances.append(self)
+
+    def kill(self):
+        self.instances.remove(self)
+
+
+class PeriodicTimerSpecs(PeriodicTimerBase):
+    instances = []
+
     def __init__(self, interval, callback):
         self.interval = interval
         self.callback = callback
         self.timerId = None
+        super(PeriodicTimerSpecs, self).__init__()
 
     def start(self):
         assert self.timerId is None
@@ -107,16 +118,24 @@ class PeriodicTimerSpecs(object):
 
     def kill(self):
         assert self.timerId is not None
+        super(PeriodicTimerSpecs, self).kill()
+        self.stop()
+
+    def stop(self):
+        assert self.timerId is not None
         g_Player.clearInterval(self.timerId)
         self.timerId = None
 
 
-class OneShotTimerSpecs(object):
+class OneShotTimerSpecs(PeriodicTimerBase):
+    instances = []
+
     def __init__(self, delay, callback):
         self.delay = delay
         self.callback = callback
         self.elapsed = False
         self.timerId = g_Player.setTimeout(self.delay, self.__onTimerElapsed)
+        super(OneShotTimerSpecs, self).__init__()
 
     def __onTimerElapsed(self):
         self.elapsed = True
@@ -124,6 +143,7 @@ class OneShotTimerSpecs(object):
 
     def kill(self):
         assert self.timerId is not None
+        super(OneShotTimerSpecs, self).kill()
         if not self.elapsed:
             g_Player.clearInterval(self.timerId)
 
@@ -135,7 +155,6 @@ class GameState(avg.DivNode):
         self._bgTrack = None
         self._maxBgTrackVolume = 1
         self.opacity = 0
-        self._timers = []
         self.sensitive = False
 
     def init(self, app):
@@ -148,10 +167,10 @@ class GameState(avg.DivNode):
         self._maxBgTrackVolume = maxVolume
 
     def registerPeriodicTimer(self, period, callback):
-        self._timers.append(PeriodicTimerSpecs(period, callback))
+        return PeriodicTimerSpecs(period, callback)
 
     def registerOneShotTimer(self, delay, callback):
-        self._timers.append(OneShotTimerSpecs(delay, callback))
+        return OneShotTimerSpecs(delay, callback)
 
     def update(self, dt):
         self._update(dt)
@@ -182,7 +201,7 @@ class GameState(avg.DivNode):
         self.opacity = 0
         if self._bgTrack:
             self._bgTrack.stop()
-        self._killTimers()
+        self._stopTimers()
 
     def _init(self):
         pass
@@ -212,18 +231,15 @@ class GameState(avg.DivNode):
         pass
 
     def _startTimers(self):
-        for timer in self._timers:
-            if isinstance(timer, PeriodicTimerSpecs):
-                timer.start()
+        for timer in PeriodicTimerSpecs.instances:
+            timer.start()
 
-    def _killTimers(self):
-        newTimersList = []
-        for timer in self._timers:
-            timer.kill()
-            if not isinstance(timer, OneShotTimerSpecs):
-                newTimersList.append(timer)
+    def _stopTimers(self):
+        for ptimer in PeriodicTimerSpecs.instances:
+            ptimer.stop()
 
-        self._timers = newTimersList
+        for ottimer in OneShotTimerSpecs.instances:
+            ottimer.kill()
 
 
 # Abstract
@@ -244,7 +260,7 @@ class TransitionGameState(GameState):
         self._doTransOut(self.__postTransOut)
         if self._bgTrack:
             self._doBgTrackTransOut()
-        self._killTimers()
+        self._stopTimers()
 
     def _doTransIn(self, postCb):
         raise NotImplementedError()

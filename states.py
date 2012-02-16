@@ -86,22 +86,24 @@ class InfoState(engine.FadeGameState):
                 parent=self)
 
         self.__currentProcess = None
+        self.__autostartTimer = None
         self.registerPeriodicTimer(100, self.__pollStatus)
 
     def _preTransIn(self):
         self.setupGameInfo(registry.games.getCurrentGame())
         if config.data.autoskip:
-            self.registerOneShotTimer(config.data.infostateduration * 1000,
+            self.__autostartTimer = self.registerOneShotTimer(
+                    config.data.infostateduration * 1000,
                     self.__runGame)
 
     def _onKeyDown(self, event):
         if event.keystring == 'n':
-            self.setupGameInfo(registry.games.getNextGame())
+            self.__loadNextGame()
         elif event.keystring == 'p':
             self.setupGameInfo(registry.games.getPrevGame())
         elif event.keystring == 'v':
             self.__onGameExited()
-        elif event.keystring == 'x':
+        elif event.keystring == 'x' and self.__currentProcess is None:
             self.__runGame()
 
     def setupGameInfo(self, game):
@@ -133,6 +135,9 @@ class InfoState(engine.FadeGameState):
             self.__onGameExited()
 
     def __runGame(self):
+        if config.data.autoskip and not self.__autostartTimer.elapsed:
+            self.__autostartTimer.kill()
+
         game = registry.games.getCurrentGame()
         process.hideLauncherWindow()
         self.__currentProcess = process.Process(game)
@@ -152,9 +157,17 @@ class InfoState(engine.FadeGameState):
     def __terminateGame(self):
         self.__currentProcess.terminate()
 
+    def __loadNextGame(self):
+        self.setupGameInfo(registry.games.getNextGame())
+
     def __onGameExited(self):
         relay.u0.setRelayActive(False)
-        self.app.changeState('Vote')
+        self.__currentProcess = None
+
+        if config.data.voting:
+            self.app.changeState('Vote')
+        else:
+            self.__loadNextGame()
 
 
 class VoteState(engine.FadeGameState):

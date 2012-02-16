@@ -58,6 +58,7 @@ def init():
     data.votehurryup = cfg.getint('SGC', 'votehurryup')
     data.votefile = cfg.get('SGC', 'votefile')
     data.autoskip = cfg.getboolean('SGC', 'autoskip')
+    data.voting = cfg.getboolean('SGC', 'voting')
     data.defaultgameduration = cfg.getint('SGC', 'defaultgameduration')
     data.infostateduration = cfg.getint('SGC', 'infostateduration')
     data.votestateduration = cfg.getint('SGC', 'votestateduration')
