@@ -250,6 +250,7 @@ class VoteState(engine.FadeGameState):
         relay.u0.forceStatesUpdate()
 
     def _preTransOut(self):
+        self.__u0FeedActive = False
         registry.games.getNextGame()
         self.__voteTimer.reset()
 
